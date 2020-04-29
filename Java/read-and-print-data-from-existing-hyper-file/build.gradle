@@ -1,0 +1,16 @@
+plugins {
+	id 'java'
+	id 'application'
+}
+
+repositories {
+	mavenCentral()
+}
+
+application {
+	mainClassName = 'examples.ReadAndPrintDataFromExistingHyperFile'
+}
+
+dependencies {
+	implementation fileTree(dir: '../../lib', include: '*.jar')
+}

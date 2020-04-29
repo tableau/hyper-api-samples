@@ -1,0 +1,16 @@
+plugins {
+	id 'java'
+	id 'application'
+}
+
+repositories {
+	mavenCentral()
+}
+
+application {
+	mainClassName = 'examples.UpdateDataInExistingHyperFile'
+}
+
+dependencies {
+	implementation fileTree(dir: '../../lib', include: '*.jar')
+}
