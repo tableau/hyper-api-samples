@@ -45,7 +45,7 @@ There are currently eight samples that are available in each language supported:
   * This example demonstrates how to insert spatial data (WKT) to a .hyper file
 
 * __insert_data_using_expressions__
-  * This examples shows how you can use SQL expressions in Hyper API Inserter to transform or compute data on the fly during data insertion
+  * This example shows how you can use SQL expressions in Hyper API Inserter to transform or compute data on the fly during data insertion
 
 
 
