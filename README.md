@@ -47,7 +47,8 @@ There are currently eight samples that are available in each language supported:
 * __insert_data_using_expressions__
   * This example shows how you can use SQL expressions in Hyper API Inserter to transform or compute data on the fly during data insertion
 
-
+* __defragment_data_of_existing_hyper_file__
+  * (Python only) This example shows how you can optimize the file storage of an existing `.hyper` file by copying all of the tables and data into a new file, thereby reducing file fragmentation.
 
 ## How do I install the Hyper API?
 It is a prerequisite that to work with these code samples, the Hyper API is installed in your language of choice. Head to our [official Hyper API Documentation](https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_installing.html) to get it up and running.
