@@ -11,9 +11,11 @@ This repo is the home of the Hyper API sample code. It contains both __Officiall
 -  The official samples are packaged and shipped within the Hyper API itself. All of the official samples are available for each language supported by the Hyper API: Python, Java, C++, and C#/.Net (.NET Standard 2.0) and are entirely supported and maintained by Tableau.
 - The community samples are more use-case-specific and likely available in one language. They have been written by members of the Tableau Development Team but recieve the level of 'Community Supported' as they may not be maintained in newer releases. Each of the samples has been manually tested and reviewed before publishing.
 
+<br  />
+
 ### __If you are looking to learn more about the Hyper API, please check out the [official documentation](https://help.tableau.com/current/api/hyper_api/en-us/index.html).__ ### 
 
-
+<br  />
 
 ## What is the Hyper API?
 For the unfamiliar, the Hyper API contains a set of functions you can use to automate your interactions with Tableau extract (.hyper) files. You can use the API to create new extract files, or to open existing files, and then insert, delete, update, or read data from those files. Using the Hyper API developers and administrators can:
