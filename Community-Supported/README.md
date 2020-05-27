@@ -4,6 +4,8 @@
 Copy on community samples here
 
 ## What samples are available?
+- defragment
+  - what this does too
 - hyper-to-tdsx
   - yadda yadda
 - s3-to-hyper
