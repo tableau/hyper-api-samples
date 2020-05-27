@@ -7,9 +7,9 @@
 
 __Current Version:__ 0.0.10622
 
-This repo is the home of the Hyper API sample code. It contains both __Officially Supported Samples__ and __Community Supported Samples__:
+This repo is the home of the Hyper API samples. It contains both __Tableau-Supported Samples__ and __Community-Supported Samples__:
 -  The official samples are packaged and shipped within the Hyper API itself. All of the official samples are available for each language supported by the Hyper API: Python, Java, C++, and C#/.Net (.NET Standard 2.0) and are entirely supported and maintained by Tableau.
-- The community samples are more use-case-specific and likely available in one language. They have been written by members of the Tableau Development Team but recieve the level of 'Community Supported' as they may not be maintained in newer releases. Each of the samples has been manually tested and reviewed before publishing.
+- The community samples are more use case specific and likely available in one language. They have been written by members of the Tableau development team but recieve the level of 'Community Supported' as they may not be maintained in newer releases. Each of the samples has been manually tested and reviewed before publishing.
 
 <br  />
 

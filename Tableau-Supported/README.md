@@ -1,7 +1,7 @@
-# Officially Supported Samples
+# Tableau-Supported Samples
 [![Tableau Supported](https://img.shields.io/badge/Support%20Level-Tableau%20Supported-53bd92.svg)](https://www.tableau.com/support-levels-it-and-developer-tools)
 
-Each of these samples is officially supported, maintained, and tested by our developer team. They are available in each of the supported languages of the Hyper API and may be updated with every new release.
+Each of these samples are officially supported, maintained, and tested by our development team. They are available in each supported languages of the Hyper API and may be updated with every new release.
 
 <br  />
 
@@ -10,7 +10,7 @@ There are currently eight samples that are available in each language supported:
 
 * __create_hyper_file_from_csv__
   * Demonstrates how you can use the Hyper SQL COPY command to quickly populate a table in the .hyper file from the contents of a comma-separated value (CSV) file. This technique is the fastest way to bring data into an extract, as Hyper is reading data directly from the CSV file.
-
+iu
 * __delete_data_from_existing_hyper_file__
   * Demonstrates how you can use the Hyper SQL DELETE command to remove data from a table in the .hyper file.
 
