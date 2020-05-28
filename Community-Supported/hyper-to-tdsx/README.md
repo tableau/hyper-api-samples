@@ -17,11 +17,11 @@ It should serve as a starting point for anyone looking to automate the publishin
 
 ## __Prerequisites__
 To run the script, you will need:
-- Windows, Mac, or Linux (QUESTION: mention lambda?)
+- Windows or Mac
 - Tableau Desktop v10.5 or higher
 - Python 3.7
 - Run `pip install -r requirements.txt`
-- Tableau Online/Server credentials or personal access token
+- Tableau Online/Server credentials or Personal Access Token
 
 ## __Configuration File__
 Modify `config.json` and add the following fields:
@@ -65,14 +65,11 @@ Leverage the [official Hyper API samples](https://github.com/tableau/hyper-api-s
 
 
 ## __Resources__
-Check out these resources to learn more: (Links to come)
-- Hyper API docs
-- Hyper docs
-- TSC Docs
-- REST API docs
-- Tableau tools docs
-- Data sources
-- Published data sources
+Check out these resources to learn more:
+- [Hyper API docs](https://help.tableau.com/current/api/hyper_api/en-us/index.html)
+- [TSC Docs](https://tableau.github.io/server-client-python/docs/)
+- [REST API docs](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api.htm)
+- [Tableau Tools](https://github.com/bryantbhowell/tableau_tools)
 
 ## What is the Hyper API?
 For the unfamiliar, the Hyper API contains a set of functions you can use to automate your interactions with Tableau extract (.hyper) files. You can use the API to create new extract files, or to open existing files, and then insert, delete, update, or read data from those files. Using the Hyper API developers and administrators can:
