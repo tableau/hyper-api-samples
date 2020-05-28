@@ -1,4 +1,4 @@
-<img src="https://cdns.tblsft.com/sites/default/files/blog/hyper_logo_1.jpg" width="100" height="100">
+<img src="https://cdns.tblsft.com/sites/default/files/blog/hyper_logo_1.jpg" width="70" height="70"><img src="https://cdns.tblsft.com/sites/default/files/blog/hyper_logo_1.jpg" width="70" height="70"><img src="https://cdns.tblsft.com/sites/default/files/blog/hyper_logo_1.jpg" width="70" height="70"><img src="https://cdns.tblsft.com/sites/default/files/blog/hyper_logo_1.jpg" width="70" height="70"><img src="https://cdns.tblsft.com/sites/default/files/blog/hyper_logo_1.jpg" width="70" height="70">
 
 
 # Hyper API Samples
