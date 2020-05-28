@@ -42,7 +42,7 @@ The next step is to modify the `build_tables()` function to return the proper Ta
 __Note:__ The current example features two tables, but in theory, this could support as many as you'd like. Just be sure to add the proper table definitions and make sure that the order in the list of table data and table definitions properly match.
 
 ## __Creating the .tdsx File__
-As mentioned, one key step needed for the automatic publishing of multi-table hyper files is a Packaged Data Source, or .tdsx. As of now, this is a step that must be completed manually as a part of the setup process. _You will only need to do this once_. If a .tdsx is not present in the directory, the script will prompt you to create one.
+As mentioned, one key step needed for the automatic publishing of multi-table hyper files is a Packaged Data Source, or .tdsx. As of now, this is a step that must be completed manually as a part of the setup process. _You will only need to do this once_. If a .tdsx is not present in the directory, the script will prompt you to create one. At this point, you should have entered the required config fields and have run the python script once to create the multi-table .hyper file.
 
 Packaged Data Sources contain important metadata needed for Tableau Desktop and Server/Online. This includes things like definted joins and join clauses, relationships, calculated fields, and more.
 
