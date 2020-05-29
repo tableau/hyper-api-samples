@@ -1,17 +1,31 @@
+# -----------------------------------------------------------------------------
+#
+# This file is the copyrighted property of Tableau Software and is protected
+# by registered patents and other applicable U.S. and international laws and
+# regulations.
+#
+# You may adapt this file and modify it to fit into your context and use it
+# as a template to start your own projects.
+#
+# -----------------------------------------------------------------------------
 import argparse
 from pathlib import PurePath
 from tableauhyperapi import HyperProcess, Telemetry, Connection, TableDefinition, TableName
 
+# An example of how you can optimize the file storage of an existing `.hyper` file by copying 
+# all of the tables and data into a new file. This reduces file fragmentation.
+
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="This tool rewrites a given Hyper file in an optimized, dense format.")
-    argparser.add_argument("input_hyper_file_path", type=PurePath, help="The input Hyper file path that will be rewritten")
-    argparser.add_argument("--output-hyper-file-path", "-o", type=PurePath, help="The output Hyper file path for the rewritten output Hyper file")
+    argparser.add_argument("input_hyper_file_path", type=PurePath, help="The input Hyper file path that will be rewritten.")
+    argparser.add_argument("--output-hyper-file-path", "-o", type=PurePath, help="The output Hyper file path for the rewritten output Hyper file.")
     args = argparser.parse_args()
     if not args.output_hyper_file_path:
         args.output_hyper_file_path = args.input_hyper_file_path.parent / (args.input_hyper_file_path.stem + f".new.hyper")
 
     with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU) as hyper:
         with Connection(endpoint=hyper.endpoint) as connection:
+            # Connect to the input and output databases
             # Create the output Hyper file or overwrite it
             catalog = connection.catalog
             catalog.drop_database_if_exists(args.output_hyper_file_path)

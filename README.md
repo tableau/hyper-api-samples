@@ -48,6 +48,8 @@ There are currently eight samples that are available in each language supported:
   * This example shows how you can use SQL expressions in Hyper API Inserter to transform or compute data on the fly during data insertion
 
 * __defragment_data_of_existing_hyper_file__
+
+  [![Community Supported](https://img.shields.io/badge/Support%20Level-Community%20Supported-457387.svg)](https://www.tableau.com/support-levels-it-and-developer-tools)
   * (Python only) This example shows how you can optimize the file storage of an existing `.hyper` file by copying all of the tables and data into a new file, thereby reducing file fragmentation.
 
 ## How do I install the Hyper API?
