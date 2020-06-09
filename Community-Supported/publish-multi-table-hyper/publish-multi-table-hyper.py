@@ -52,14 +52,6 @@ def build_tables():
     return table_definitions
 
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-#                                                                                       #
-#                       You should not need to make major changes                       #
-#                          to the below code to run the sample.                         #
-#                                                                                       #
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
-
 def load_config():
     '''Loads a config file in the current directory called config.json.'''
     

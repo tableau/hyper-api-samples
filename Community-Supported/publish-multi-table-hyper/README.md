@@ -65,7 +65,7 @@ Leverage the [official Hyper API samples](https://github.com/tableau/hyper-api-s
 
 
 ## __Resources__
-Check out these resources to learn more: (Links to come)
+Check out these resources to learn more:
 - Hyper API docs
 - Hyper docs
 - TSC Docs
@@ -73,20 +73,4 @@ Check out these resources to learn more: (Links to come)
 - Tableau tools docs
 - Data sources
 - Published data sources
-
-## What is the Hyper API?
-For the unfamiliar, the Hyper API contains a set of functions you can use to automate your interactions with Tableau extract (.hyper) files. You can use the API to create new extract files, or to open existing files, and then insert, delete, update, or read data from those files. Using the Hyper API developers and administrators can:
-- Create extract files for data sources not currently supported by Tableau.
-- Automate custom extract, transform and load (ETL) processes (for example, implement rolling window updates or custom incremental updates).
-- Retrieve data from an extract file.
-
-If you are looking to learn more about the Hyper API, please check out the [official documentation](https://help.tableau.com/current/api/hyper_api/en-us/index.html).
-
-## How do I get help or give feedback?
-If you have questions, want to submit ideas, or give feedback on the code, please do so by submitting an issue on this project.
-
-## Contributions
-Code contributions and improvements by the community are welcomed and accepted on a case-by-case basis. See the LICENSE file for current open-source licensing and use information.
-
-Before we can accept pull requests from contributors, we require a signed [Contributor License Agreement (CLA)](https://tableau.github.io/contributing.html).
  
