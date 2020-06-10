@@ -17,11 +17,11 @@ It should serve as a starting point for anyone looking to automate the publishin
 
 ## __Prerequisites__
 To run the script, you will need:
-- Windows, Mac, or Linux (QUESTION: mention lambda?)
+- Windows or Mac
 - Tableau Desktop v10.5 or higher
 - Python 3.7
 - Run `pip install -r requirements.txt`
-- Tableau Online/Server credentials or personal access token
+- Tableau Online/Server credentials or Personal Access Token
 
 ## __Configuration File__
 Modify `config.json` and add the following fields:
@@ -42,7 +42,7 @@ The next step is to modify the `build_tables()` function to return the proper Ta
 __Note:__ The current example features two tables, but in theory, this could support as many as you'd like. Just be sure to add the proper table definitions and make sure that the order in the list of table data and table definitions properly match.
 
 ## __Creating the .tdsx File__
-As mentioned, one key step needed for the automatic publishing of multi-table hyper files is a Packaged Data Source, or .tdsx. As of now, this is a step that must be completed manually as a part of the setup process. _You will only need to do this once_. If a .tdsx is not present in the directory, the script will prompt you to create one.
+As mentioned, one key step needed for the automatic publishing of multi-table hyper files is a Packaged Data Source, or .tdsx. As of now, this is a step that must be completed manually as a part of the setup process. _You will only need to do this once_. If a .tdsx is not present in the directory, the script will prompt you to create one. At this point, you should have entered the required config fields and have run the python script once to create the multi-table .hyper file.
 
 Packaged Data Sources contain important metadata needed for Tableau Desktop and Server/Online. This includes things like definted joins and join clauses, relationships, calculated fields, and more.
 
@@ -66,11 +66,24 @@ Leverage the [official Hyper API samples](https://github.com/tableau/hyper-api-s
 
 ## __Resources__
 Check out these resources to learn more:
-- Hyper API docs
-- Hyper docs
-- TSC Docs
-- REST API docs
-- Tableau tools docs
-- Data sources
-- Published data sources
+- [Hyper API docs](https://help.tableau.com/current/api/hyper_api/en-us/index.html)
+- [TSC Docs](https://tableau.github.io/server-client-python/docs/)
+- [REST API docs](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api.htm)
+- [Tableau Tools](https://github.com/bryantbhowell/tableau_tools)
+
+## What is the Hyper API?
+For the unfamiliar, the Hyper API contains a set of functions you can use to automate your interactions with Tableau extract (.hyper) files. You can use the API to create new extract files, or to open existing files, and then insert, delete, update, or read data from those files. Using the Hyper API developers and administrators can:
+- Create extract files for data sources not currently supported by Tableau.
+- Automate custom extract, transform and load (ETL) processes (for example, implement rolling window updates or custom incremental updates).
+- Retrieve data from an extract file.
+
+If you are looking to learn more about the Hyper API, please check out the [official documentation](https://help.tableau.com/current/api/hyper_api/en-us/index.html).
+
+## How do I get help or give feedback?
+If you have questions, want to submit ideas, or give feedback on the code, please do so by submitting an issue on this project.
+
+## Contributions
+Code contributions and improvements by the community are welcomed and accepted on a case-by-case basis. See the LICENSE file for current open-source licensing and use information.
+
+Before we can accept pull requests from contributors, we require a signed [Contributor License Agreement (CLA)](https://tableau.github.io/contributing.html).
  
