@@ -12,3 +12,14 @@ The community samples are more use case specific and likely available in one lan
   - Demonstrates the full end-to-end workflow of how to create a multi-table `.hyper` file, place the extract into a `.tdsx`, and publish to Online/Server.
 - __s3-to-hyper__
   - Creates a `.hyper` file from a wildcard union on text files held in an AWS S3 bucket. The extract is then placed in a `.tdsx` file and publishes to Online/Server. 
+
+</br>
+</br>
+
+## How do I get help or give feedback?
+If you have questions, want to submit ideas, or give feedback on the code, please do so by submitting an issue on this project.
+
+## Contributions
+Code contributions and improvements by the community are welcomed and accepted on a case-by-case basis. See the LICENSE file for current open-source licensing and use information.
+
+Before we can accept pull requests from contributors, we require a signed [Contributor License Agreement (CLA)](https://tableau.github.io/contributing.html).
