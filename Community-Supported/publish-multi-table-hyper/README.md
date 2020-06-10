@@ -1,5 +1,5 @@
 # publish-multi-table-hyper
-## __Publishing a Multi-Table Hyper File to Tableau__
+## __Publishing a Multi-Table Hyper File to Tableau Online/Server__
 
 ![Community Supported](https://img.shields.io/badge/Support%20Level-Community%20Supported-53bd92.svg)
 
