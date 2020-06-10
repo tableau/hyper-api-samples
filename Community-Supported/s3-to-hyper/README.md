@@ -3,7 +3,7 @@
 
 ![Community Supported](https://img.shields.io/badge/Support%20Level-Community%20Supported-53bd92.svg)
 
-__Current Version__: 0.1
+__Current Version__: 1.0
 
 This sample demonstrates how to, with little modification, leverage the Hyper API, Tableau Server Client Library, Tableau Tools, and Boto3 to do the following:
 - Download a header file and un-unioned CSVs to pass to hyper
