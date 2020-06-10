@@ -1,0 +1,5 @@
+tableauhyperapi
+tableau_tools
+tableauserverclient
+boto3
+botocore

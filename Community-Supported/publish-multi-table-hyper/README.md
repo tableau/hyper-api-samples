@@ -1,4 +1,4 @@
-# hyper-to-tdsx
+# publish-multi-table-hyper
 ## __Publishing a Multi-Table Hyper File to Tableau__
 
 ![Community Supported](https://img.shields.io/badge/Support%20Level-Community%20Supported-53bd92.svg)
@@ -52,7 +52,7 @@ To create the .tdsx, [follow these steps](https://help.tableau.com/current/pro/d
 - Click and drag the relevant tables and create the joins or relationships
 - Head to 'Sheet 1'
 - In the top-left corner, right-click on the data source and select 'Add to Saved Data Sources...'
-- Name the file to match `config.json`
+- Name the file to match the value in `config.json`
 - Select 'Tableau __Packaged__ Data Source (*.tdsx)' from the dropdown
 - Save it in the directory with the script and hyper file
 
