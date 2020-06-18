@@ -15,11 +15,11 @@ from tableau_tools import *
 from tableau_tools.tableau_documents import *
 import tableauserverclient as TSC
 import os, json, sys, glob, csv, fnmatch, \
-     boto3, botocore
+     boto3, botocore, datetime
 
 
 def get_csvs(name_format, header_file, bucket_name, profile_name):
-    '''uses boto3 to find matching filenames and download them locally'''
+    '''Uses boto3 to find matching filenames and download them locally.'''
 
     print(f"Downloading files matching {name_format} and {header_file}.")
     
@@ -44,34 +44,8 @@ def get_csvs(name_format, header_file, bucket_name, profile_name):
             s3.download_file(bucket_name, filename['Key'], filename['Key'])
 
 
-def add_filename(name_format, header_file):    
-    '''adds an extra column of data containing the filename of the csv to differentiate unioned files'''
-    # This may be the slowest part of the code. Please ensure this can't be accomplished with other sorts
-    # of ETL, earlier in the pipeline, or if there is a differentiating field already in the data.
-
-    # Appends filename to each csv as new column for union.
-    all_csvs = glob.glob(name_format)
-    print("Preparing to add filenames to csvs...")
-    if not all_csvs:
-        message = "No CSVs downloaded. Please check the S3 bucket or config file."
-        cleanup(name_format, header_file)
-        sys.exit(message)
-    for csv_name in all_csvs:
-        with open(csv_name, mode='r', encoding='utf-8-sig') as f:
-            print(f"Loading {csv_name}...")
-            r = csv.reader(f)
-            data = list(r)
-            print("Appending column...")
-            for row in data:
-                row.append(csv_name)
-        with open(csv_name, mode='w', encoding='utf-8-sig') as w:
-            print("Writing back...")
-            writer = csv.writer(w)
-            writer.writerows(data)
-
-
 def cleanup(name_format, header_file):
-    '''removes files matching the naming pattern and the header file in the local dir'''
+    '''Removes files matching the naming pattern and the header file in the local dir.'''
     pass
     datacsvs = glob.glob(name_format)
     headercsv = glob.glob(header_file)
@@ -81,11 +55,11 @@ def cleanup(name_format, header_file):
         os.remove(csv)
 
 
-def create_initial_hyper(header_file, hyper_name, name_format, table_name, contains_header, append_filename):
-    '''Creates an extract_table based on the header file.'''
+def create_initial_hyper(header_file, hyper_name, name_format, table_name, contains_header):
+    '''Creates a table based on the header file.'''
 
     print(f'Creating table "{table_name}" with columns defined in {header_file} in {hyper_name}.')
-    sqltypes = get_sql_types()
+    sql_mapping = get_sql_types()
     
     # Creates lists based on header_file.
     try:
@@ -95,26 +69,24 @@ def create_initial_hyper(header_file, hyper_name, name_format, table_name, conta
     except Exception as e:
         sys.exit(e)
 
-    # Creates table.
-    extract_table = TableDefinition(
+    # Creates table and temp table
+    table = TableDefinition(
         table_name=TableName(table_name)
     )
+    temp_table = TableDefinition(
+        table_name=TableName('temp'),
+        persistence=TEMPORARY
+    )
 
-    # Adds columns.
+    # Adds columns, with column name and type specified from config file.
     for col, col_type in zip(header_list[0], header_list[1]):
-        col_type = type_convert(col_type)
-        for sqltype in sqltypes:
-            lowersql = str(sqltype).lower()
-            if col_type == lowersql:
-                col_type = sqltype
-
-        column = TableDefinition.Column(col,col_type)
-        extract_table.add_column(column)
+        sql_type = sql_mapping[col_type.lower()]
+        column = TableDefinition.Column(col,sql_type)
+        table.add_column(column)
+        temp_table.add_column(column)
     
-    # Adds additional filename column for union.
-    if append_filename == 'True':
-        column = TableDefinition.Column('Filename',SqlType.text())
-        extract_table.add_column(column)
+    column = TableDefinition.Column('File Path',SqlType.text())
+    table.add_column(column)
     
     # Starts the Hyper Process with telemetry enabled to send data to Tableau.
     # To opt out, simply set telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU.   
@@ -123,70 +95,63 @@ def create_initial_hyper(header_file, hyper_name, name_format, table_name, conta
         # Creates new Hyper file "[hyper_name].hyper".
         # Replaces file with CreateMode.CREATE_AND_REPLACE if it already exists.
         with Connection(endpoint=hyper.endpoint, database=hyper_name, create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
-            connection.catalog.create_table(extract_table)
-            print("Empty Hyper File Created.")
+            connection.catalog.create_table(table)
+            connection.catalog.create_table(temp_table)
+            print(f"Empty Hyper File with table: {table.table_name} created.")
 
             # Inserts data into table via add_to_hyper() method.
-            add_to_hyper(hyper, connection, hyper_name, extract_table, name_format, contains_header)
+            add_to_hyper(hyper, connection, hyper_name, table, temp_table, name_format, contains_header)
             print("The connection to the Hyper file has been closed.")
     print("The Hyper process has been shut down.")    
 
 
-def add_to_hyper(hyper, connection, hyper_name, extract_table, name_format, contains_header):
+def add_to_hyper(hyper, connection, hyper_name, table, temp_table, name_format, contains_header):
     '''Uses the Hyper API to build and insert data into Tableau Extract.'''
-   
+
    # Finds CSVs based on name_format.
     for csvpath in glob.glob(os.getcwd()+'/'+name_format):
-
         # Load all rows into table_name from the CSV file.
         connection.execute_command(
-            command=f"COPY {extract_table.table_name} FROM '{csvpath}' WITH "
-            f"(format csv, NULL 'NULL', delimiter ',', header {contains_header})")
-
-        print(f"Added data to table: {extract_table.table_name} from {csvpath}.")
-
-
-def type_convert(coltype):
-    '''Helper function used to catch variations col datatypes and hyper sqltypes.'''
-
-    # Example of potential mappings from header column definitions to SqlType objects in the Hyper API.
-    coltype = coltype.lower()
-    if coltype == 'string':
-        coltype = 'text'
-    if coltype == 'varchar':
-        coltype = 'text'
-    if coltype == 'integer':
-        coltype = 'int'
-    if coltype == 'int64':
-        coltype = 'int'
-    
-    return coltype
+            command=f"COPY {temp_table.table_name} FROM '{csvpath}' WITH "
+            f"(format csv, NULL 'NULL', delimiter ',', header {contains_header})"
+        )
+        # Instert into persistent table with File Path col.
+        connection.execute_command(
+            command=f"INSERT INTO {table.table_name} SELECT *, '{csvpath}' FROM {temp_table.table_name}"
+        )
+        # Clear temp table.
+        connection.execute_command(
+            command=f"DELETE FROM {temp_table.table_name}"
+        )
+        print(f"Added data to table {table.table_name} from {csvpath}.")
 
 
 def get_sql_types():
-    '''Helper function to help programmatically map datatypes to Hyper SqlTypes'''
-    sqlbig_int = SqlType.big_int()
-    sqlbool = SqlType.bool()
-    sqlbytes = SqlType.bytes()
-    # sqlchar = SqlType.char()
-    sqldate = SqlType.date()
-    sqldouble = SqlType.double()
-    sqlgeography = SqlType.geography()
-    sqlint = SqlType.int()
-    sqlinterval = SqlType.interval()
-    sqljson = SqlType.json()
-    # sqlnumeric = SqlType.numeric()
-    sqloid = SqlType.oid()
-    sqlsmallint = SqlType.small_int()
-    sqltext = SqlType.text()
-    sqltimestamp = SqlType.timestamp()
-    sqltimestamp_tz = SqlType.timestamp_tz()
-    # sqlvarchar = SqlType.varchar()
+    '''Helper function to help programmatically map datatypes to Hyper SqlTypes.'''
+    sql_mapping = {
+        # Mapping according to Hyper SqlType name
+        'big_int': SqlType.big_int(),
+        'bool': SqlType.bool(),
+        'bytes': SqlType.bytes(),
+        'date': SqlType.date(),
+        'double': SqlType.double(),
+        'geography': SqlType.geography(),
+        'int': SqlType.int(),
+        'interval': SqlType.interval(),
+        'json': SqlType.json(),
+        'oid': SqlType.oid(),
+        'small_int': SqlType.small_int(),
+        'text': SqlType.text(),
+        'timestamp': SqlType.timestamp(),
+        'timestamp_tz': SqlType.timestamp_tz(),
 
-    sqltypes = [sqlbig_int, sqlbool, sqlbytes, sqldate, sqldouble, sqlgeography, sqlint, sqlinterval, 
-        sqljson, sqloid, sqlsmallint, sqltext, sqltimestamp, sqltimestamp_tz]
-        # to do: add char, numberic, varchar support
-    return sqltypes
+        # Space for custom mappings
+        'string': SqlType.text(),
+        'varchar': SqlType.text(),
+        'integer': SqlType.int(),
+        'int64': SqlType.int()
+    }   
+    return sql_mapping
 
 
 def load_config():
@@ -201,7 +166,6 @@ def load_config():
         message = 'Could not read config file.'
         print("Unexpected error: ", sys.exc_info()[0])
         sys.exit(message)
-
 
 
 def swap_hyper(hyper_name, tdsx_name, logger_obj=None):
@@ -236,7 +200,6 @@ def swap_hyper(hyper_name, tdsx_name, logger_obj=None):
     os.rename(tdsx_updated_name, tdsx_name)
 
 
-
 def publish_to_server(site_name, server_address, project_name, tdsx_name, tableau_token_name, tableau_token):
     '''Publishes updated, local .tdsx to Tableau, overwriting the original file.'''
     
@@ -267,29 +230,29 @@ def publish_to_server(site_name, server_address, project_name, tdsx_name, tablea
             datasource, file_path, overwrite_true)
         print(f"Publishing of datasource '{tdsx_name}' complete.")
 
+
 # Run
 def main():
     '''Called to run the script.'''
+    starttime = datetime.datetime.now()
+    
     config = load_config() 
     get_csvs(config['name_format'], config['header_file'], config['bucket_name'], config['aws_cred_profile_name'])
-    
-    if config['append_filename'] == 'True':
-        add_filename(config['name_format'], config['header_file'])
-    else:
-        print("Skipping appending of filenames...")
 
     try:
-        create_initial_hyper(config['header_file'], config['hyper_name'], config['name_format'],config['table_name'], config['contains_header'], config['append_filename'])
+        create_initial_hyper(config['header_file'], config['hyper_name'], config['name_format'],config['table_name'], config['contains_header'])
     except HyperException as e:
-        cleanup(config['name_format'], config['header_file'])
         sys.exit(e)
+    finally:
+        cleanup(config['name_format'], config['header_file'])
 
-    cleanup(config['name_format'], config['header_file'])
     swap_hyper(config['hyper_name'], config['tdsx_name'])
     
     publish_to_server(config['site_name'], config['server_address'], config['project_name'],
         config['tdsx_name'], config['tableau_token_name'], config['tableau_token'])
     
+    print(f"Start time: {starttime} \nTotal time: {datetime.datetime.now()-starttime}")
+
 
 if __name__ == '__main__':
     main()

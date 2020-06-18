@@ -11,6 +11,5 @@
     "name_format": "sales*.csv",
     "bucket_name": "bucket_name",
     "aws_cred_profile_name": "default",
-    "contains_header": "False",
-    "append_filename": "True"
+    "contains_header": "False"
 }

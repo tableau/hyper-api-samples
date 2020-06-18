@@ -6,13 +6,13 @@
 __Current Version__: 1.0
 
 This sample demonstrates how to, with little modification, leverage the Hyper API, Tableau Server Client Library, Tableau Tools, and Boto3 to do the following:
-- Download a header file and un-unioned CSVs to pass to hyper
+- Download a header file and un-unioned CSVs to pass to hyper from a S3 bucket
 - Create an empty hyper file with columns defined in the header file
 - Copies the CSVs to the hyper file based on a wildcard pattern match
 - Swaps the newly created extract into a Packaged Data Source file (.tdsx)
 - Publishes the data source to a specified project on Tableau Online/Server
 
-It should serve as a starting point for anyone looking to automate the publishing process of datasources based on contents of S3 buckets. The advantage of leveraging this sample is that an end user should not need to open the python script and edit the table configuration; the code handles that automatically. In that way, this is intended to be 'point and shoot'.
+It should serve as a starting point for anyone looking to automate the publishing process of datasources based on contents of S3 buckets. The advantage of leveraging this sample is that an end user should not need to open the Python script, instead simply edit the configuration file and the code handles the rest automatically.
 
 
 # Get started
@@ -21,10 +21,10 @@ It should serve as a starting point for anyone looking to automate the publishin
 To run the script, you will need:
 - Windows or Mac
 - Tableau Desktop v10.5 or higher
-- Python 3.7
+- Python 3.6 - 3.7
 - Run `pip install -r requirements.txt`
 - Tableau Online/Server credentials or personal access token
-- AWS Credentials File
+- AWS Credentials File ([more on this here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html))
 
 ## __Configuration File__
 You will need to modify `config.json` and add fields that include:
