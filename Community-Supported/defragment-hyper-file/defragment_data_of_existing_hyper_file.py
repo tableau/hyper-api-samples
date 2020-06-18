@@ -42,4 +42,4 @@ if __name__ == "__main__":
                     catalog.create_table(output_table_definition)
                     connection.execute_command(f"INSERT INTO {output_table_name} (SELECT * FROM {input_table_name})")
                     print(f"Successfully converted table {input_table_name}")
-            print(f"Successfully converted {args.input_hyper_file_path} into {args.output_hyper_file_path}\n")
+            print(f"Successfully converted {args.input_hyper_file_path} into {args.output_hyper_file_path}")
