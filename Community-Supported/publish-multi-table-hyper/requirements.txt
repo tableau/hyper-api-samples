@@ -1,3 +1,3 @@
-tableauhyperapi
-tableauserverclient
-tableau_tools
+tableauhyperapi==0.0.10899
+tableauserverclient==0.10
+tableau_tools==5.1.3

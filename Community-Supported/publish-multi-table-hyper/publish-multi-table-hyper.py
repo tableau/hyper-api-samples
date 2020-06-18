@@ -28,7 +28,7 @@ def get_data():
     return table_data
 
 def build_tables():
-    '''Builds the two tables for the multitable extract'''
+    '''Builds the two tables for the multitable extract.'''
     # Since the table names are not prefixed with an explicit schema name, the tables will reside in the default "public" namespace.
     # It is important to match the order of the table definitions with the data tables returned in get_data()
     table_one = TableDefinition(
@@ -68,7 +68,7 @@ def load_config():
 
 
 def add_to_hyper(table_data, table_definitions, hyper_name):
-    '''Uses the Hyper API to build and insert data into Tableau Extract.'''
+    '''Uses the Hyper API to build and insert data into the Hyper file.'''
 
     # Starts the Hyper Process with telemetry enabled to send data to Tableau.
     # To opt out, simply set telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU.   
