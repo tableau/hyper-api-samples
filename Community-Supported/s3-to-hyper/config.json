@@ -1,0 +1,15 @@
+{
+    "hyper_name": "extract.hyper",
+    "tdsx_name": "test.tdsx",
+    "table_name": "s3_data",
+    "server_address": "my.tableau.server",
+    "site_name": "my_site",
+    "project_name": "my_project",
+    "tableau_token_name": "token_name",
+    "tableau_token": "token_goes_here",
+    "header_file": "header.csv",
+    "name_format": "sales*.csv",
+    "bucket_name": "bucket_name",
+    "aws_cred_profile_name": "default",
+    "contains_header": "False"
+}
