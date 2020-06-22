@@ -19,22 +19,22 @@ For a description of how fragmentation can occur in the `.hyper` file and for wa
 
 To run the script, you will need:
 
-- a computer running Windows or macOS
+- a computer running Windows, macOS, or Linux
 
-- Tableau Desktop v10.5 or higher
+- Tableau Desktop v10.5 or later
 
-- Python 3.7
+- Python 3.6 or 3.7
 
 ## Run the sample
 
 As a quick test of how the sample works, you don't need to make any changes to the `defragment_data_of_existing_hyper_file.py` file. You can simply run the sample on a `.hyper` file to see how it can reduce fragmentation. The Python sample reads an existing `.hyper` file and copies all the tables and data into a new file.
 
-Ensure that you have installed the requirements and execute the Python file. 
+Ensure that you have installed the requirements and then just run the sample Python file.
+The following instructions assume that you have set up a virtual environment for Python. For more information on creating virtual environments, see [venv - Creation of virtual environments](https://docs.python.org/3/library/venv.html) in the Python Standard Library.
 
-1. The following instructions assume that you have set up a virtual environment for Python. For more information on creating virtual environments, see [venv - Creation of virtual environments](https://docs.python.org/3/library/venv.html){:target="_blank"}{:ref="noopener"} in the Python Standard Library.
+1. Open a terminal and activate the Python virtual environment (`venv`).
 
-1. Open a terminal and navigate to the `venv` directory.
-
+1. Navigate to the folder where you installed the sample.
 
 1. Run the Python script against an existing `.hyper` file. The syntax for running the script is:
    
@@ -53,7 +53,7 @@ Ensure that you have installed the requirements and execute the Python file.
 
 ## __Customization__
 
-The script, `defragment_data_of_existing_hyper_file.py`, should work in most cases. However, if your Hyper file contains metadata that is not stored in the table definitions, for example, column descriptions or assumed constraints, you might need to modify the script to preserve the metadata. If you created the constraints and definitions yourself, using your own SQL statements, the Python script should give you a good starting point for adding your own code.
+The script, `defragment_data_of_existing_hyper_file.py`, should work "as is" in most cases. If your Hyper file contains metadata that is not stored in the table definitions, for example, column descriptions or assumed constraints, the script will still work as expected and will create a new `.hyper` file with all the tables and data. However, the new file will not contain the metadata. In that case, you might need to modify the script to preserve that information. If you created the constraints and definitions yourself, using your own SQL statements, the Python script should give you a good starting point for adding your own code.
 
 If you use the script on an extract file created using Tableau or Prep, be aware that the metadata (if it exists) will not be copied to the new file. The script only copies the data contained in the table definitions.
 
