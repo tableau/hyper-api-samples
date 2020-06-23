@@ -8,7 +8,7 @@ The community samples focus on individual use cases and are Python-only. They ha
 ## What samples are available?
 - __defragment_data_of_existing_hyper_file__
   - Demonstrates how to optimize the file storage of an existing `.hyper` file by copying all of the tables and data into a new file to reduce file fragmentation.
-- __publish_multi-table-hyper__
+- __publish-multi-table-hyper__
   - Demonstrates the full end-to-end workflow of how to create a multi-table `.hyper` file, place the extract into a `.tdsx`, and publish to Online/Server.
 - __s3-to-hyper__
   - Demonstrates how to create a `.hyper` file from a wildcard union on text files held in an AWS S3 bucket. The extract is then placed in a `.tdsx` file and published to Online/Server. 
