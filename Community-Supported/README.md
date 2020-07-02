@@ -6,6 +6,8 @@ The community samples focus on individual use cases and are Python-only. They ha
 </br>
 
 ## What samples are available?
+- __adjust-vertex-order__
+  - Demonstrates how to adjust the vertex order of all polygons in a `.hyper` file by copying all of the tables and data and calling transformative SQL function on all columns of type `GEOGRAPHY`.
 - __defragment_data_of_existing_hyper_file__
   - Demonstrates how to optimize the file storage of an existing `.hyper` file by copying all of the tables and data into a new file to reduce file fragmentation.
 - __publish-multi-table-hyper__
