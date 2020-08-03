@@ -22,4 +22,5 @@ Edit the following:
 - Tableau Online/Server authentication info
 - Name of `.hyper` file
 - TableDefinition (columns and SQLTypes)
+
 Next, you'll need to determine how to insert the data into the `.hyper` file. This will vary depending on the shape of the data and how it is stored. Please see our other samples for more on best practices with the Hyper API. Make those changes in the `insert_data()` function.
