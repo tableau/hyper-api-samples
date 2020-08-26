@@ -10,10 +10,12 @@ The community samples focus on individual use cases and are Python-only. They ha
   - Demonstrates how to adjust the vertex order of all polygons in a `.hyper` file by copying all of the tables and data and calling transformative SQL function on all columns of type `GEOGRAPHY`.
 - [__defragment_data_of_existing_hyper_file__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/defragment-hyper-file)
   - Demonstrates how to optimize the file storage of an existing `.hyper` file by copying all of the tables and data into a new file to reduce file fragmentation.
+- [__publish-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/publish-hyper)
+  - Simple example of publishing single-table `.hyper` file.
 - [__publish-multi-table-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/publish-multi-table-hyper)
-  - Demonstrates the full end-to-end workflow of how to create a multi-table `.hyper` file, place the extract into a `.tdsx`, and publish to Online/Server.
+  - Demonstrates the full end-to-end workflow of how to create a multi-table `.hyper` file, place the extract into a `.tdsx`, and publish to Tableau Online or Server.
 - [__s3-to-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/s3-to-hyper)
-  - Demonstrates how to create a `.hyper` file from a wildcard union on text files held in an AWS S3 bucket. The extract is then placed in a `.tdsx` file and published to Online/Server. 
+  - Demonstrates how to create a `.hyper` file from a wildcard union on text files held in an AWS S3 bucket. The extract is then placed in a `.tdsx` file and published to Tableau Online or Server. 
 
 </br>
 </br>
