@@ -14,9 +14,11 @@ from tableauhyperapi import HyperProcess, Telemetry, \
 hyper_name = 'customer.hyper'
 server_address = 'https://10ax.online.tableau.com/'
 site_name = 'mysitename'
-project_name = 'projectname'
-token_name = 'tokennamehere'
+project_name = 'myproject'
+token_name = 'mytokenname'
 token_value = 'tokenherebutpleaseconsidersecuritypolicies'
+# For more on tokens, head here:
+# https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm
 
 path_to_database = Path(hyper_name)
 
@@ -36,6 +38,8 @@ extract_table = TableDefinition(
 def insert_data():
     """
     An example demonstrating a simple single-table Hyper file including table creation and data insertion with different types
+    This code is lifted from the below example:
+    https://github.com/tableau/hyper-api-samples/blob/main/Tableau-Supported/Python/insert_data_into_single_table.py
     """
     print("Creating single table for publishing.")
 
