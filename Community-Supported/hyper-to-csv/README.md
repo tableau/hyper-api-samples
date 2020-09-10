@@ -3,7 +3,8 @@
 
 ![Community Supported](https://img.shields.io/badge/Support%20Level-Community%20Supported-53bd92.svg)
 
-This simple Python script demonstrates how to transform to a `.hyper` file into a CSV file. This may allow for Hyper to fit more easily into ETL processes outside of the Tableau platform.
+This simple Python script demonstrates how to transform a `.hyper` file into a CSV file. This example showcases how to fit .hyper files easily into ETL processes outside of the Tableau platform.
+
 
 # Get started
 
@@ -12,14 +13,14 @@ This simple Python script demonstrates how to transform to a `.hyper` file into 
 To run the script, you will need:
 
 - a computer running Windows, macOS, or Linux
-- Python 3.6 or 3.7
+- Python >=3.6
 - `pip install requirements.txt`
 
 ## Run the sample
 
-Running hyper-to-csv.py will transform a given hyper file into a CSV. Simply change the values of `hyper_name`, `my_table`, and `output_name` to match your use case. Note that `my_table` is an object that can take both the table name, as well as the schema name. See more on this [here](https://help.tableau.com/current/api/hyper_api/en-us/reference/py/tableauhyperapi.html#tableauhyperapi.TableName).
+Running hyper-to-csv.py will transform a given hyper file into a CSV. Simply change the values of `hyper_name`, `my_table`, and `output_name` to match your use case. Note that `my_table` is an object that can take both the table name, as well as the schema name. See more on this in the [TableName documentation](https://help.tableau.com/current/api/hyper_api/en-us/reference/py/tableauhyperapi.html#tableauhyperapi.TableName).
 
-You will be able to ignore the `insert_data()` method, as it simply creates a sample database used for demonstrative purposes. Instead, you'll leverage the very simple code in `convert_to_csv()` and point the script at the proper file. 
+Instead of leveraging the `insert_data()` method, you will simply reference an existing `.hyper` file and use the `convert_to_csv()` method. The sample database created in the script is for demonstrative purposes only.
 
 ## __Notes__
 

@@ -23,25 +23,23 @@ from tableauhyperapi import HyperProcess, Telemetry, \
 
 """
 Note: you need to follow the pantab documentation to make sure columns line up with the
-appropriate datatypes. For example, my first try at this failed because my text() columns
-were NOT_NULLABLE, which conflicts with what pantab expects.
-More here:
+appropriate datatypes. More here:
 https://pantab.readthedocs.io/en/latest/caveats.html
 
 """
 
 # Change these to match your use case.
-hyper_name = "hyper_for_csv.hyper"
-my_table = TableName("Extract", "Extract")
+hyper_file_path = "hyper_for_csv.hyper"
+table_name = TableName("Extract", "Extract")
 output_name = "output.csv"
 
-path_to_database = Path(hyper_name)
+path_to_database = Path(hyper_file_path)
 
 
 # The table is called "Extract" and will be created in the "Extract" schema
 # and contains four columns.
 extract_table = TableDefinition(
-    table_name=my_table,
+    table_name=table_name,
     columns=[
         TableDefinition.Column(name='Customer ID', type=SqlType.text(), nullability=NULLABLE),
         TableDefinition.Column(name='Customer Name', type=SqlType.text(), nullability=NULLABLE),
@@ -94,10 +92,7 @@ def convert_to_csv():
     """
 
     # Uses pantab to convert the hyper file to a df.
-    df = pantab.frame_from_hyper(hyper_name, table=my_table)
-    print("Printing table:")
-    print(df)
-    
+    df = pantab.frame_from_hyper(hyper_file_path, table=table_name)
     print("Converting to CSV...")
 
     # Simple pandas->csv operation.
