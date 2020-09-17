@@ -12,6 +12,8 @@ The community samples focus on individual use cases and are Python-only. They ha
   - Demonstrates how to optimize the file storage of an existing `.hyper` file by copying all of the tables and data into a new file to reduce file fragmentation.
 - [__hyper-to-csv__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/hyper-to-csv)
   - Shows a simple conversion of a `.hyper` database to a CSV file.
+- [__list-hyper-contents__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/list-hyper-contents)
+  - Lists all schemas/tables/columns contained within a `.hyper` file
 - [__publish-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/publish-hyper)
   - Simple example of publishing single-table `.hyper` file.
 - [__publish-multi-table-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/publish-multi-table-hyper)
