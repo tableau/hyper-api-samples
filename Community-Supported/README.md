@@ -10,6 +10,8 @@ The community samples focus on individual use cases and are Python-only. They ha
   - Demonstrates how to adjust the vertex order of all polygons in a `.hyper` file by copying all of the tables and data and calling transformative SQL function on all columns of type `GEOGRAPHY`.
 - [__defragment_data_of_existing_hyper_file__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/defragment-hyper-file)
   - Demonstrates how to optimize the file storage of an existing `.hyper` file by copying all of the tables and data into a new file to reduce file fragmentation.
+- [__hyper-to-csv__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/hyper-to-csv)
+  - Shows a simple conversion of a `.hyper` database to a CSV file.
 - [__publish-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/publish-hyper)
   - Simple example of publishing single-table `.hyper` file.
 - [__publish-multi-table-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/publish-multi-table-hyper)
