@@ -1,0 +1,4 @@
+tableauhyperapi==0.0.10899
+tableauserverclient==0.10
+pantab==1.1.0
+pandas>=0.25.1
