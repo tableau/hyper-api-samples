@@ -22,7 +22,7 @@ To run the script, you will need:
 
 ## How to use it
 
-Simply call it from the console, passing the file path of your Hyper file as the first (and only) paramter like this
+Simply call it from the console, passing the file path of your Hyper file as the first (and only) parameter like this
 
 ```
 python list_hyper_contents.py my_data.hyper
