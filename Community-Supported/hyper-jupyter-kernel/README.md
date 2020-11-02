@@ -21,17 +21,17 @@ With the `hyper_kernel` you can integrate HyperAPI's SQL interface directly into
 
 ![Screenshot of jupyter console](media/jupyterlab.png)
 
-First, install jupyter-console and the kernel provided in this repository using
+First, install JupyterLab and the kernel provided in this repository using
 
 ```
-python -m pip install jupyter-console tableauhyperapi git+https://github.com/tableau/hyper-api-samples#subdirectory=Community-Supported/hyper-jupyter-kernel
-python -m hyper_kernel.install
+python3 -m pip install jupyterlab tableauhyperapi git+https://github.com/tableau/hyper-api-samples#subdirectory=Community-Supported/hyper-jupyter-kernel
+python3 -m hyper_kernel.install
 ```
 
 Next launch JupyterLab using
 
 ```
-python -m jupyter lab
+python3 -m jupyter lab --core-mode
 ```
 
 and open JupyterLab in your browser
@@ -44,8 +44,8 @@ and open JupyterLab in your browser
 First, install jupyter-console and the kernel provided in this repository using
 
 ```
-python -m pip install jupyter-console tableauhyperapi git+https://github.com/tableau/hyper-api-samples#subdirectory=Community-Supported/hyper-jupyter-kernel
-python -m hyper_kernel.install
+python3 -m pip install jupyter-console tableauhyperapi git+https://github.com/tableau/hyper-api-samples#subdirectory=Community-Supported/hyper-jupyter-kernel
+python3 -m hyper_kernel.install
 ```
 
 Afterwards, you can launch the console using
