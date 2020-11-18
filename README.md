@@ -38,3 +38,6 @@ If you have questions, want to submit ideas, or give feedback on the code, pleas
 Code contributions and improvements by the community are welcomed and accepted on a case-by-case basis. See the LICENSE file for current open-source licensing and use information.
 
 Before we can accept pull requests from contributors, we require a signed [Contributor License Agreement (CLA)](https://tableau.github.io/contributing.html).
+
+## Hyper API License
+Note that the Hyper API comes with a proprietary license, see the `LICENSE` file in the Hyper API package.
