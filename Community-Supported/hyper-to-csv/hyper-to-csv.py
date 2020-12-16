@@ -1,4 +1,4 @@
-  # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
 # This file is the copyrighted property of Tableau Software and is protected
 # by registered patents and other applicable U.S. and international laws and
