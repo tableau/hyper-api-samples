@@ -26,6 +26,8 @@ static const hyperapi::TableDefinition customerTable{
     hyperapi::TableDefinition::Column{"Loyalty Reward Points", hyperapi::SqlType::bigInt(), hyperapi::Nullability::NotNullable},
     hyperapi::TableDefinition::Column{"Segment", hyperapi::SqlType::text(), hyperapi::Nullability::NotNullable}}};
 
+// An example demonstrating loading data from a csv into a new Hyper file
+// For more details, see https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_insert_csv.html
 static void runCreateHyperFileFromCSV() {
    std::cout << "EXAMPLE - Load data from CSV into table in new Hyper file" << std::endl;
    const std::string pathToDatabase = "data/customer.hyper";
@@ -59,6 +61,18 @@ static void runCreateHyperFileFromCSV() {
 
          // Load all rows into "Customers" table from the CSV file.
          // `executeCommand` executes a SQL statement and returns the impacted row count.
+         //
+         // Note:
+         // You might have to adjust the COPY parameters to the format of your specific csv file.
+         // The example assumes that your columns are separated with the ',' character
+         // and that NULL values are encoded via the string 'NULL'.
+         // Also be aware that the `header` option is used in this example:
+         // It treats the first line of the csv file as a header and does not import it.
+         //
+         // The parameters of the COPY command are documented in the Tableau Hyper SQL documentation
+         // (https:#help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-copy.html).
+         std::cout << "Issuing the SQL COPY command to load the csv file into the table. Since the first line" << std::endl;
+         std::cout << "of our csv file contains the column names, we use the `header` option to skip it." << std::endl;
          int64_t rowCount = connection.executeCommand(
             "COPY " + customerTable.getTableName().toString() + " from " + hyperapi::escapeStringLiteral(pathToCSV) +
             " with (format csv, NULL 'NULL', delimiter ',', header)");

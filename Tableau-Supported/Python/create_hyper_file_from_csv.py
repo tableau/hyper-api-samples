@@ -10,7 +10,7 @@
 # -----------------------------------------------------------------------------
 from pathlib import Path
 
-from tableauhyperapi import HyperProcess, Telemetry, \
+from hyperapi import HyperProcess, Telemetry, \
     Connection, CreateMode, \
     NOT_NULLABLE, NULLABLE, SqlType, TableDefinition, \
     Inserter, \
@@ -19,8 +19,7 @@ from tableauhyperapi import HyperProcess, Telemetry, \
 
 
 customer_table = TableDefinition(
-    # Since the table name is not prefixed with an explicit schema name, the table will reside in the default "public" namespace.
-    table_name="Customer",
+    table_name="Customer",  # Since the table name is not prefixed with an explicit schema name, the table will reside in the default "public" namespace.
     columns=[
         TableDefinition.Column("Customer ID", SqlType.text(), NOT_NULLABLE),
         TableDefinition.Column("Customer Name", SqlType.text(), NOT_NULLABLE),
@@ -33,6 +32,7 @@ customer_table = TableDefinition(
 def run_create_hyper_file_from_csv():
     """
     An example demonstrating loading data from a csv into a new Hyper file
+    For more details, see https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_insert_csv.html
     """
     print("EXAMPLE - Load data from CSV into table in new Hyper file")
 
@@ -71,6 +71,18 @@ def run_create_hyper_file_from_csv():
 
             # Load all rows into "Customers" table from the CSV file.
             # `execute_command` executes a SQL statement and returns the impacted row count.
+            #
+            # Note:
+            # You might have to adjust the COPY parameters to the format of your specific csv file.
+            # The example assumes that your columns are separated with the ',' character
+            # and that NULL values are encoded via the string 'NULL'.
+            # Also be aware that the `header` option is used in this example:
+            # It treats the first line of the csv file as a header and does not import it.
+            #
+            # The parameters of the COPY command are documented in the Tableau Hyper SQL documentation
+            # (https:#help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-copy.html).
+            print("Issuing the SQL COPY command to load the csv file into the table. Since the first line")
+            print("of our csv file contains the column names, we use the `header` option to skip it.")
             count_in_customer_table = connection.execute_command(
                 command=f"COPY {customer_table.table_name} from {escape_string_literal(path_to_csv)} with "
                 f"(format csv, NULL 'NULL', delimiter ',', header)")
