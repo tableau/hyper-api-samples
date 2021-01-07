@@ -31,6 +31,7 @@ import static java.util.Arrays.asList;
 
 /**
  * An example demonstrating loading data from a csv into a new Hyper file
+ * For more details, see https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_insert_csv.html
  */
 public class CreateHyperFileFromCSV {
 
@@ -87,7 +88,19 @@ public class CreateHyperFileFromCSV {
                 Path customerCSVPath = resolveExampleFile("customers.csv");
 
                 // Load all rows into "Customer" table from the CSV file
-                // executeCommand executes a SQL statement and returns the impacted row count
+                // executeCommand executes a SQL statement and returns the impacted row count.
+                //
+                // Note:
+                // You might have to adjust the COPY parameters to the format of your specific csv file.
+                // The example assumes that your columns are separated with the ',' character
+                // and that NULL values are encoded via the string 'NULL'.
+                // Also be aware that the `header` option is used in this example:
+                // It treats the first line of the csv file as a header and does not import it.
+                //
+                // The parameters of the COPY command are documented in the Tableau Hyper SQL documentation
+                // (https:#help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-copy.html).
+                System.out.println("Issuing the SQL COPY command to load the csv file into the table. Since the first line");
+                System.out.println("of our csv file contains the column names, we use the `header` option to skip it.");
                 long countInCustomerTable = connection.executeCommand(
                         "COPY " + CUSTOMER_TABLE.getTableName() +
                                 " FROM " + escapeStringLiteral(customerCSVPath.toString()) +

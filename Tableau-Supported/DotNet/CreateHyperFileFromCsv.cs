@@ -20,6 +20,7 @@ namespace Example
     {
         /// <summary>
         /// Create a new Hyper file with a single table and load data from a CSV file into it.
+        /// For more details, see https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_insert_csv.html
         /// </summary>
         /// <param name="exampleDataDir">Path to the directory with example data.</param>
         public override void Execute(string exampleDataDir)
@@ -67,6 +68,18 @@ namespace Example
                     // ExecuteCommand executes a SQL statement and returns the impacted row count.
                     // TableDefinition.Name property is a QualifiedName object which is escaped properly when
                     // converted to a string; but the path to the CSV file needs to be escaped.
+                    //
+                    // Note:
+                    // You might have to adjust the COPY parameters to the format of your specific csv file.
+                    // The example assumes that your columns are separated with the ',' character
+                    // and that NULL values are encoded via the string 'NULL'.
+                    // Also be aware that the `header` option is used in this example:
+                    // It treats the first line of the csv file as a header and does not import it.
+                    //
+                    // The parameters of the COPY command are documented in the Tableau Hyper SQL documentation
+                    // (https:#help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-copy.html).
+                    Console.WriteLine("Issuing the SQL COPY command to load the csv file into the table. Since the first line");
+                    Console.WriteLine("of our csv file contains the column names, we use the `header` option to skip it.");
                     int countInCustomerTable = connection.ExecuteCommand(
                         $"COPY {customerTable.TableName} from {Sql.EscapeStringLiteral(pathToCsv)} with " +
                         $"(format csv, NULL 'NULL', delimiter ',', header)");
