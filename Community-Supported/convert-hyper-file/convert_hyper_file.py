@@ -38,6 +38,6 @@ if __name__ == "__main__":
                     output_table_definition = TableDefinition(output_table_name, catalog.get_table_definition(input_table_name).columns)
                     catalog.create_schema_if_not_exists(output_table_name.schema_name)
                     catalog.create_table(output_table_definition)
-                    connection.execute_command(f"INSERT BULK INTO {output_table_name} (SELECT * FROM {input_table_name})")
+                    connection.execute_command(f"INSERT INTO {output_table_name} (SELECT * FROM {input_table_name})")
                     print(f"Successfully converted table {input_table_name}")
             print(f"Successfully converted {args.input_hyper_file_path} into {args.output_hyper_file_path}")
