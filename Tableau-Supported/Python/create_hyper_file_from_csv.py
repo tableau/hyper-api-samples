@@ -10,7 +10,7 @@
 # -----------------------------------------------------------------------------
 from pathlib import Path
 
-from hyperapi import HyperProcess, Telemetry, \
+from tableauhyperapi import HyperProcess, Telemetry, \
     Connection, CreateMode, \
     NOT_NULLABLE, NULLABLE, SqlType, TableDefinition, \
     Inserter, \
