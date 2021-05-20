@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.CommandLineUtils" Version="1.1.1" />
-    <PackageReference Include="Tableau.HyperAPI.NET" Version="0.0.11355" />
   </ItemGroup>
 
   <ItemGroup>

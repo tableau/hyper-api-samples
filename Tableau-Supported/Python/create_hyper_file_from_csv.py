@@ -19,7 +19,8 @@ from tableauhyperapi import HyperProcess, Telemetry, \
 
 
 customer_table = TableDefinition(
-    table_name="Customer",  # Since the table name is not prefixed with an explicit schema name, the table will reside in the default "public" namespace.
+    # Since the table name is not prefixed with an explicit schema name, the table will reside in the default "public" namespace.
+    table_name="Customer",
     columns=[
         TableDefinition.Column("Customer ID", SqlType.text(), NOT_NULLABLE),
         TableDefinition.Column("Customer Name", SqlType.text(), NOT_NULLABLE),
