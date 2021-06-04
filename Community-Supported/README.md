@@ -26,7 +26,8 @@ The community samples focus on individual use cases and are Python-only. They ha
   - Demonstrates the full end-to-end workflow of how to create a multi-table `.hyper` file, place the extract into a `.tdsx`, and publish to Tableau Online or Server.
 - [__s3-to-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/s3-to-hyper)
   - Demonstrates how to create a `.hyper` file from a wildcard union on text files held in an AWS S3 bucket. The extract is then placed in a `.tdsx` file and published to Tableau Online or Server. 
-
+- [__clouddb-extractor__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/clouddb-extractor)
+  - Cloud Database Extractor Utility - This sample shows how to extract data from a cloud database to a published `.hyper` extract and append/update/delete rows to keep up to date.
 
 </br>
 </br>
