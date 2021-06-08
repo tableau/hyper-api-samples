@@ -316,19 +316,24 @@ class BigQueryExtractor(BaseExtractor):
             raise Exception("Must specify either sql_query OR source_table")
         if sql_query:
             # Execute query to generate append changeset - slower than bulk extract
-            output_hyper_files = self._query_to_hyper_files(sql_query, tab_ds_name)
+            output_hyper_files = self._query_to_hyper_files(
+                sql_query, changeset_table_name
+            )
 
             for path_to_database in output_hyper_files:
                 self._update_datasource_from_hyper_file(
                     path_to_database=path_to_database,
                     tab_ds_name=tab_ds_name,
+                    changeset_table_name=changeset_table_name,
                     action="INSERT",
                 )
                 os.remove(path_to_database)
         if source_table:
             # Bulk extract and append from a changeset that is stored in a bq table
             source_table_ref = bq_client.get_table(source_table)
-            target_table_def = self._hyper_table_definition(source_table_ref)
+            target_table_def = self._hyper_table_definition(
+                source_table_ref, hyper_table_name=changeset_table_name
+            )
             for blob in self._extract_to_blobs(source_table):
                 temp_csv_filename = tempfile_name(prefix="temp", suffix=".csv")
                 self._download_blob(blob, temp_csv_filename)
@@ -339,6 +344,7 @@ class BigQueryExtractor(BaseExtractor):
                     self._update_datasource_from_hyper_file(
                         path_to_database=path_to_database,
                         tab_ds_name=tab_ds_name,
+                        changeset_table_name=changeset_table_name,
                         action="INSERT",
                     )
                     os.remove(path_to_database)

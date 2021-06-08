@@ -20,10 +20,11 @@ following methods:
 For a full list of methods and args see the docstrings in the BaseExtractor class.
 
 ## Contents
-* __base_extractor.py__ - provies an Abstract Base Class with some utility methods to extract from cloud databases to "live to hyper" Tableau Datasources. Database specific Extractor classes extend this to manage queries, exports and schema discovery via the database vendor supplied client libraries.
+* __base_extractor.py__ - provides an Abstract Base Class with some utility methods to extract from cloud databases to "live to hyper" Tableau Datasources. Database specific Extractor classes extend this to manage queries, exports and schema discovery via the database vendor supplied client libraries.
 * __bigquery_extractor.py__ - Google BigQuery implementation of Base Hyper Extractor ABC
 * __restapi_helpers.py__ - The helper functions in this module are only used when REST API functionality is not yet available in the standard tableauserverclient libraries. (e.g. PATCH for update/upsert. Once these get added to the standard client libraries then this module will be refactored out.
 * __extractor_cli.py__ - Simple CLI Wrapper around Extractor Classes
+* __requirements.txt__ - List of third party python library dependencies - install with "pip install -r requirements.txt"
 
 ## CLI Utility
 We suggest that you import one of the Extractor implementations and call this directly however we've included a command line utility to illustrate the key functionality:
@@ -64,5 +65,5 @@ To run the script, you will need:
 - a Linux server
 - Python 3.6 or 3.7
 - [Hyper API for Python](https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_installing.html#install-the-hyper-api-for-python-36-and-37)
-- [Tableau Server Client Libraries](https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_installing.html#install-the-hyper-api-for-python-36-and-37)
+- [Tableau Server Client Libraries](https://tableau.github.io/server-client-python/docs/)
 - BigQuery Extractor: The `Google Cloud SDK` and `Python libraries for Cloud Storage and BigQuery`
