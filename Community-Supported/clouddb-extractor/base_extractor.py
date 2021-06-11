@@ -26,6 +26,7 @@ from pathlib import Path
 import time
 import uuid
 from filelock import FileLock
+from typing import Dict, Optional, Any, Union, List, Iterable, Generator
 
 import tableauserverclient as TSC
 import tableau_restapi_helpers as REST
@@ -35,56 +36,53 @@ from tableauhyperapi import (
     Telemetry,
     Inserter,
     CreateMode,
+    TableDefinition,
+    SqlType,
     escape_string_literal,
 )
 
 logger = logging.getLogger("hyper_samples.extractor.base")
 
-TELEMETRY = Telemetry.SEND_USAGE_DATA_TO_TABLEAU
+TELEMETRY: Telemetry = Telemetry.SEND_USAGE_DATA_TO_TABLEAU
 """
     TELEMETRY: Send usage data to Tableau
         Set to Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU to disable
 """
 
-TEMP_DIR = "/tmp"
+TEMP_DIR: str = "/tmp"
 """
-    TEMP_DIR (string): Local staging directory for hyper files, database exports etc.
-"""
-
-MAX_ROWS_PER_FILE = 100000
-"""
-    MAX_ROWS_PER_FILE (int): Not yet implemented: Split output into smaller files for large query results
+    TEMP_DIR (str): Local staging directory for hyper files, database exports etc.
 """
 
-SAMPLE_ROWS = 1000
+SAMPLE_ROWS: int = 1000
 """
     SAMPLE_ROWS (int): Default number of rows for LIMIT when using load_sample
 """
 
-ASYNC_JOB_POLL_INTERVAL = 5
+ASYNC_JOB_POLL_INTERVAL: int = 5
 """
     ASYNC_JOB_POLL_INTERVAL (int): How many seconds to wait between polls for Asynchronous Job completion
 """
 
-DATASOURCE_LOCK_TIMEOUT = 60
+DATASOURCE_LOCK_TIMEOUT: int = 60
 """
     DATASOURCE_LOCK_TIMEOUT (int): This  prevent multiple requests from being run against the
-    same Tableau datasource at the same time.  This only guards against symeltaneous jobs on the
+    same Tableau datasource at the same time.  This only guards against simultaneous jobs on the
     same host so you will need to implement this check in your scheduler if running accross
     multiple hosts
 """
 
-DATASOURCE_LOCKFILE_PREFIX = "/var/lock/tableau_extractor"
+DATASOURCE_LOCKFILE_PREFIX: str = "/var/lock/tableau_extractor"
 """
-    DATASOURCE_LOCK_TIMEOUT (string): Defines the location of lockfiles
-"""
-
-DEFAULT_SITE_ID = ""
-"""
-    DEFAULT_SITE_ID (string): Default site ID
+    DATASOURCE_LOCK_TIMEOUT (str): Defines the location of lockfiles
 """
 
-HYPER_CONNECTION_PARAMETERS = {"lc_time": "en_GB", "date_style": "YMD"}
+DEFAULT_SITE_ID: str = ""
+"""
+    DEFAULT_SITE_ID (str): Default site ID
+"""
+
+HYPER_CONNECTION_PARAMETERS: Dict[str, str] = {"lc_time": "en_GB", "date_style": "YMD"}
 """
     HYPER_CONNECTION_PARAMETERS (dict): Options are documented in the Tableau Hyper API
     documentation, chapter “Connection Settings
@@ -126,7 +124,7 @@ class HyperSQLTypeMappingError(Exception):
     pass
 
 
-def tempfile_name(prefix="", suffix=""):
+def tempfile_name(prefix: str = "", suffix: str = "") -> str:
     return "{}/tableau_extractor_{}{}{}".format(
         TEMP_DIR, prefix, uuid.uuid4().hex, suffix
     )
@@ -154,15 +152,15 @@ class BaseExtractor(ABC):
 
     def __init__(
         self,
-        tableau_hostname,
-        tableau_project,
-        tableau_site_id=DEFAULT_SITE_ID,
-        staging_bucket=None,
-        tableau_token_name=None,
-        tableau_token_secret=None,
-        tableau_username=None,
-        tableau_password=None,
-    ):
+        tableau_hostname: str,
+        tableau_project: str,
+        tableau_site_id: str = DEFAULT_SITE_ID,
+        staging_bucket: Optional[str] = None,
+        tableau_token_name: Optional[str] = None,
+        tableau_token_secret: Optional[str] = None,
+        tableau_username: Optional[str] = None,
+        tableau_password: Optional[str] = None,
+    ) -> None:
         super().__init__()
         self.tableau_site_id = tableau_site_id
         self.tableau_hostname = tableau_hostname
@@ -184,7 +182,7 @@ class BaseExtractor(ABC):
         self.tableau_project_id = self._get_project_id(tableau_project)
         self.staging_bucket = staging_bucket
 
-    def _datasource_lock(self, tab_ds_name):
+    def _datasource_lock(self, tab_ds_name: str) -> FileLock:
         """
         Returns a posix lock for the named datasource.
         NOTE: Exclusive lock is not actually acquired until you call "with lock:" or "lock.acquire():
@@ -199,11 +197,10 @@ class BaseExtractor(ABC):
         )
         return FileLock(lock_path, timeout=DATASOURCE_LOCK_TIMEOUT)
 
-    def _get_project_id(self, tab_project):
+    def _get_project_id(self, tab_project: str) -> str:
         """
         Return project_id for tab_project
         """
-        # Get project_id from project_name
         all_projects, pagination_item = self.tableau_server.projects.get()
 
         for project in all_projects:
@@ -215,7 +212,7 @@ class BaseExtractor(ABC):
             "No project found for:{}".format(tab_project)
         )
 
-    def _get_datasource_id(self, tab_datasource):
+    def _get_datasource_id(self, tab_datasource: str) -> str:
         """
         Return id for tab_datasource
         """
@@ -230,7 +227,7 @@ class BaseExtractor(ABC):
             "No datasource found for:{}".format(tab_datasource)
         )
 
-    def _wait_for_async_job(self, async_job_id):
+    def _wait_for_async_job(self, async_job_id: str) -> int:
         """
         Waits for async job to complete and returns finish_code
         """
@@ -248,26 +245,41 @@ class BaseExtractor(ABC):
                     async_job_id, jobinfo.progress, finish_code
                 )
             )
-
-        logger.info(
-            "Job {} Completed: Finish Code: {} Notes: {}".format(
-                async_job_id, finish_code, jobinfo.notes
+        if finish_code == "0":
+            logger.info(
+                "Job {} Completed: Finish Code: {}".format(async_job_id, finish_code)
             )
-        )
+        else:
+            full_job_details = REST.get_job_details(
+                self.tableau_hostname,
+                self.tableau_server.auth_token,
+                self.tableau_server.site_id,
+                async_job_id,
+            )
+            logger.error(
+                "Job {} Completed with non-zero Finish Code: {} : {}".format(
+                    async_job_id, finish_code, full_job_details
+                )
+            )
+            logger.error("Check jobs pane in Tableau for detailed failure information")
+
         return finish_code
 
-    def _query_result_to_hyper_files(self, query_result_iter, target_table_def):
+    def query_result_to_hyper_file(
+        self,
+        query_result_iter: Iterable[Iterable[object]],
+        target_table_def: TableDefinition,
+    ) -> Path:
         """
-        Writes query output to one or more Hyper files
-        Returns a list of output Hyper files
+        Writes query output to a Hyper file
+        Returns Path to hyper file
 
-        query_result_iter (obj): Iterator containing result rows
+        query_result_iter : Iterator containing result rows
         target_table_def (TableDefinition): Schema for target extract table
         """
-        output_hyper_files = []
+
         # TODO: Split output into smaller files when query result > MAX_ROWS_PER_FILE
         path_to_database = Path(tempfile_name(prefix="temp_", suffix=".hyper"))
-        output_hyper_files.append(path_to_database)
 
         with HyperProcess(telemetry=TELEMETRY) as hyper:
 
@@ -284,7 +296,7 @@ class BaseExtractor(ABC):
                 )
                 connection.catalog.create_table(table_definition=target_table_def)
                 with Inserter(connection, target_table_def) as inserter:
-                    inserter.add_rows(query_result_iter())
+                    inserter.add_rows(query_result_iter)
                     inserter.execute()
 
                 row_count = connection.execute_scalar_query(
@@ -296,21 +308,27 @@ class BaseExtractor(ABC):
 
             logger.info("The connection to the Hyper file has been closed.")
         logger.info("The Hyper process has been shut down.")
-        return output_hyper_files
+        return path_to_database
 
-    def _csv_to_hyper_files(self, path_to_csv, target_table_def):
+    def csv_to_hyper_file(
+        self,
+        path_to_csv: str,
+        target_table_def: TableDefinition,
+        csv_format_options: str = """NULL 'NULL', delimiter ',', header FALSE""",
+    ) -> Path:
         """
-        Writes csv to one or more Hyper files
-        Returns a list of output Hyper files
+        Writes csv to a Hyper files
+        Returns Path to hyper file
 
-        path_to_csv (string): CSV file containing result rows
+        path_to_csv (str): CSV file containing result rows
         target_table_def (TableDefinition): Schema for target extract table
+        csv_format_options (str): Specify csv file format options for COPY command
+
+        NOTE: The following CSV format options are used: (format csv, NULL 'NULL', delimiter ',', header FALSE)
         """
-        output_hyper_files = []
+
         # TODO: Split output into smaller files when csv contains > MAX_ROWS_PER_FILE
         path_to_database = Path(tempfile_name(prefix="temp_", suffix=".hyper"))
-        output_hyper_files.append(path_to_database)
-
         with HyperProcess(telemetry=TELEMETRY) as hyper:
             with Connection(
                 endpoint=hyper.endpoint,
@@ -326,21 +344,21 @@ class BaseExtractor(ABC):
 
                 count_rows = connection.execute_command(
                     command=f"COPY {target_table_def.table_name} from {escape_string_literal(path_to_csv)} "
-                    f"with (format csv, NULL 'NULL', delimiter ',', header)"
+                    f"with (format csv, {csv_format_options})"
                 )
                 logger.info(
                     f"Inserted {count_rows} into table {target_table_def.table_name}"
                 )
             logger.debug("The connection to the Hyper file has been closed.")
         logger.debug("The Hyper process has been shut down.")
-        return output_hyper_files
+        return path_to_database
 
-    def _publish_hyper_file(
+    def publish_hyper_file(
         self,
-        path_to_database,
-        tab_ds_name,
-        publish_mode=TSC.Server.PublishMode.CreateNew,
-    ):
+        path_to_database: Path,
+        tab_ds_name: str,
+        publish_mode: TSC.Server.PublishMode = TSC.Server.PublishMode.CreateNew,
+    ) -> str:
         """
         Publishes a Hyper file to Tableau Server
 
@@ -365,14 +383,14 @@ class BaseExtractor(ABC):
         logger.info("Datasource published. Datasource ID: {0}".format(datasource.id))
         return datasource.id
 
-    def _update_datasource_from_hyper_file(
+    def update_datasource_from_hyper_file(
         self,
-        path_to_database,
-        tab_ds_name,
-        match_columns=None,
-        match_conditions_json=None,
-        changeset_table_name="updated_rows",
-        action="UPDATE",
+        path_to_database: Optional[Path],
+        tab_ds_name: str,
+        match_columns: Union[List[str], None] = None,
+        match_conditions_json: Optional[object] = None,
+        changeset_table_name: Optional[str] = "updated_rows",
+        action: str = "UPDATE",
     ):
         """
         Updates a datasource on Tableau Server with a changeset from a hyper file
@@ -587,7 +605,7 @@ class BaseExtractor(ABC):
                 )
 
     @abstractmethod
-    def _hyper_sql_type(self, source_column):
+    def hyper_sql_type(self, source_column: Any) -> SqlType:
         """
         Finds the correct Hyper column type for source_column
 
@@ -597,7 +615,9 @@ class BaseExtractor(ABC):
         """
 
     @abstractmethod
-    def _hyper_table_definition(self, source_table, hyper_table_name="Extract"):
+    def hyper_table_definition(
+        self, source_table: Any, hyper_table_name: str = "Extract"
+    ) -> TableDefinition:
         """
         Build a hyper table definition from source_schema
 
@@ -608,23 +628,34 @@ class BaseExtractor(ABC):
         """
 
     @abstractmethod
-    def _query_to_hyper_files(self, sql_query, hyper_table_name="Extract"):
+    def query_to_hyper_files(
+        self,
+        sql_query: Optional[str] = None,
+        source_table: Optional[str] = None,
+        hyper_table_name: str = "Extract",
+    ) -> Generator[Path, None, None]:
         """
-        Executes sql_query against the source database and writes the output to one or more Hyper files
-        Returns a list of output Hyper files
+        Executes sql_query or exports rows from source_table and writes output
+        to one or more hype files.
+
+        Returns Iterable of Paths to hyper files
 
         sql_query (string): SQL to pass to the source database
+        source_table (string): Source table ref ("project ID.dataset ID.table ID")
         hyper_table_name (string): Name of the target Hyper table, default=Extract
+
+        NOTES:
+        - Specify either sql_query OR source_table, error if both specified
         """
 
     @abstractmethod
     def load_sample(
         self,
-        source_table,
-        tab_ds_name,
-        sample_rows=SAMPLE_ROWS,
-        publish_mode=TSC.Server.PublishMode.CreateNew,
-    ):
+        source_table: str,
+        tab_ds_name: str,
+        sample_rows: int = SAMPLE_ROWS,
+        publish_mode: TSC.Server.PublishMode = TSC.Server.PublishMode.CreateNew,
+    ) -> None:
         """
         Loads a sample of rows from source_table to Tableau Server
 
@@ -636,10 +667,13 @@ class BaseExtractor(ABC):
 
     @abstractmethod
     def export_load(
-        self, source_table, tab_ds_name, publish_mode=TSC.Server.PublishMode.CreateNew
-    ):
+        self,
+        source_table: str,
+        tab_ds_name: str,
+        publish_mode: TSC.Server.PublishMode = TSC.Server.PublishMode.CreateNew,
+    ) -> None:
         """
-        Bulk export the contents of source_table and load to a Tableau Server
+        Bulk export the contents of source_table and load to Tableau Server
 
         source_table (string): Source table identifier
         tab_ds_name (string): Target datasource name
@@ -649,11 +683,11 @@ class BaseExtractor(ABC):
     @abstractmethod
     def append_to_datasource(
         self,
-        tab_ds_name,
-        sql_query=None,
-        source_table=None,
-        changeset_table_name="new_rows",
-    ):
+        tab_ds_name: str,
+        sql_query: Optional[str] = None,
+        source_table: Optional[str] = None,
+        changeset_table_name: str = "new_rows",
+    ) -> None:
         """
         Appends the result of sql_query to a datasource on Tableau Server
 
@@ -664,18 +698,18 @@ class BaseExtractor(ABC):
             contains the changeset (default="new_rows")
 
         NOTES:
-        - Specify either sql_query OR source_table, error if both specified
+        - Must specify either sql_query OR source_table, error if both specified
         """
 
     @abstractmethod
     def update_datasource(
         self,
-        tab_ds_name,
-        sql_query=None,
-        source_table=None,
-        match_columns=None,
-        match_conditions_json=None,
-        changeset_table_name="updated_rows",
+        tab_ds_name: str,
+        sql_query: Optional[str] = None,
+        source_table: Optional[str] = None,
+        match_columns: Union[List[str], None] = None,
+        match_conditions_json: Optional[object] = None,
+        changeset_table_name: str = "updated_rows",
     ):
         """
         Updates a datasource on Tableau Server with the changeset from sql_query
@@ -714,12 +748,12 @@ class BaseExtractor(ABC):
     @abstractmethod
     def delete_from_datasource(
         self,
-        tab_ds_name,
-        sql_query=None,
-        source_table=None,
-        match_columns=None,
-        match_conditions_json=None,
-        changeset_table_name="deleted_rowids",
+        tab_ds_name: str,
+        sql_query: Optional[str] = None,
+        source_table: Optional[str] = None,
+        match_columns: Union[List[str], None] = None,
+        match_conditions_json: Optional[object] = None,
+        changeset_table_name: str = "deleted_rowids",
     ):
         """
         Delete rows matching the changeset from sql_query from a datasource on Tableau Server
@@ -742,11 +776,3 @@ class BaseExtractor(ABC):
             (e.g. json_request="condition": { "op": "<", "target-col": "col1", "const": {"type": "datetime", "v": "2020-06-00"}})
         - Specify either match_columns OR match_conditions_json, error if both specified
         """
-
-
-def main():
-    pass
-
-
-if __name__ == "__main__":
-    main()

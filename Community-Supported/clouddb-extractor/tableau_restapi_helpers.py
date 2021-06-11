@@ -39,7 +39,7 @@ import uuid
 xmlns = {"t": "http://tableau.com/api"}
 
 # The REST API version we're using
-VERSION = "3.10"
+VERSION = "3.12"
 
 # For when a workbook is over 64MB, break it into 5MB(standard chunk size) chunks
 CHUNK_SIZE = 1024 * 1024 * 5  # 5MB
@@ -139,7 +139,6 @@ def check_status(server_response, success_code):
     return
 
 
-@debug
 def start_upload_session(server, auth_token, site_id):
     """
     Creates a POST request that initiates a file upload session.
@@ -156,7 +155,32 @@ def start_upload_session(server, auth_token, site_id):
 
 
 @debug
+def get_job_details(server, auth_token, site_id, job_id):
+    """
+    Retrieves all details for specified job
+    'server'        specified server address
+    'auth_token'    authentication token that grants user access to API calls
+    'site_id'       ID of the site that the user is signed into
+    'job_id'        ID of the job to query
+    Returns the response body of the GET request
+    """
+
+    # GET /api/api-version/sites/site-id/jobs/job-id
+    url = "{}/api/{}/sites/{}/jobs/{}".format(server, VERSION, site_id, job_id)
+    server_response = requests.get(url, headers={"x-tableau-auth": auth_token})
+    check_status(server_response, 200)
+    return server_response
+
+
 def upload_file(file_path, server, auth_token, site_id):
+    """
+    Uploads a file to Tableau Server
+    'file_path'     path to hyper file
+    'server'        specified server address
+    'auth_token'    authentication token that grants user access to API calls
+    'site_id'       ID of the site that the user is signed into
+    Returns the Upload ID that is used by subsequent PATCH operations
+    """
     logger.info("Uploading {} to Tableau Server...".format(file_path))
     file = os.path.basename(file_path)
     filename, file_extension = file.split(".", 1)
@@ -198,7 +222,6 @@ def upload_file(file_path, server, auth_token, site_id):
     return uploadID
 
 
-@debug
 def patch_datasource(
     server, auth_token, site_id, datasource_id, file_upload_id, request_json
 ):

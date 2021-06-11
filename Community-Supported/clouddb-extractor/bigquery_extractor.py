@@ -25,7 +25,9 @@ from base_extractor import (
     HyperSQLTypeMappingError,
     DEFAULT_SITE_ID,
     tempfile_name,
+    SAMPLE_ROWS,
 )
+from typing import Dict, Optional, Any, Union, List, Generator
 
 # from google.cloud.bigquery_storage import BigQueryReadClient
 from google.cloud import bigquery
@@ -35,8 +37,25 @@ logger = logging.getLogger("hyper_samples.extractor.bigquery")
 
 bq_client = bigquery.Client()
 
-MAX_QUERY_SIZE = 100 * 1024 * 1024  # 100MB
-SAMPLE_ROWS = 1000
+MAX_QUERY_SIZE: int = 1024 * 1024 * 1024  # 1GB
+"""
+    MAX_QUERY_SIZE (int): Abort job if query returns more than specified number of bytes.
+      Note: this is not enforced if extracting from a Table, only for SQL Query
+"""
+
+# TODO: Implement query via cloud storage once parquet support is out of beta.
+# No straight-forward way of determining schema today when using EXPORT DATA
+#  QUERY_TO_CLOUDSTORAGE_THRESHOLD: int = 50 * 1024 * 1024  # 50MB
+# """
+#     QUERY_TO_CLOUDSTORAGE_THRESHOLD (int): Create extract via Cloud Storage if query result
+#     exceeds specified number of bytes
+# """
+
+BLOBS_PER_HYPER_FILE: int = 5
+"""
+    BLOBS_PER_HYPER_FILE (int): Performance optimization - BigQuery splits extracts into 1G chunks
+    but it is more efficient to update existing datasources in fewer, larger chunks
+"""
 
 
 class QuerySizeLimitError(Exception):
@@ -64,15 +83,15 @@ class BigQueryExtractor(BaseExtractor):
 
     def __init__(
         self,
-        tableau_hostname,
-        tableau_project,
-        tableau_site_id=DEFAULT_SITE_ID,
-        staging_bucket=None,
-        tableau_token_name=None,
-        tableau_token_secret=None,
-        tableau_username=None,
-        tableau_password=None,
-    ):
+        tableau_hostname: str,
+        tableau_project: str,
+        tableau_site_id: str = DEFAULT_SITE_ID,
+        staging_bucket: Optional[str] = None,
+        tableau_token_name: Optional[str] = None,
+        tableau_token_secret: Optional[str] = None,
+        tableau_username: Optional[str] = None,
+        tableau_password: Optional[str] = None,
+    ) -> None:
         super().__init__(
             tableau_hostname=tableau_hostname,
             tableau_project=tableau_project,
@@ -84,7 +103,7 @@ class BigQueryExtractor(BaseExtractor):
             tableau_password=tableau_password,
         )
 
-    def _hyper_sql_type(self, source_column):
+    def hyper_sql_type(self, source_column: Any) -> SqlType:
         """
         Finds the correct Hyper column type for source_column
 
@@ -122,7 +141,9 @@ class BigQueryExtractor(BaseExtractor):
         )
         return return_sql_type
 
-    def _hyper_table_definition(self, source_table, hyper_table_name="Extract"):
+    def hyper_table_definition(
+        self, source_table: Any, hyper_table_name: str = "Extract"
+    ) -> TableDefinition:
         """
         Build a hyper table definition from source_schema
 
@@ -138,7 +159,7 @@ class BigQueryExtractor(BaseExtractor):
         target_cols = []
         for source_field in source_table.schema:
             this_name = source_field.name
-            this_type = self._hyper_sql_type(source_field)
+            this_type = self.hyper_sql_type(source_field)
             this_col = TableDefinition.Column(name=this_name, type=this_type)
 
             # Check for Nullability
@@ -163,15 +184,10 @@ class BigQueryExtractor(BaseExtractor):
 
         return target_schema
 
-    def _query_to_hyper_files(self, sql_query, hyper_table_name="Extract"):
+    def _estimate_query_bytes(self, sql_query: str) -> int:
         """
-        Executes sql_query against the source database and writes the output to one or more Hyper files
-        Returns a list of output Hyper files
-
-        sql_query -- SQL string to pass to the source database
-        hyper_table_name -- Name of the target Hyper table, default=Extract
+        Dry run to estimate query result size
         """
-
         # Dry run to estimate result size
         job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
         dryrun_query_job = bq_client.query(sql_query, job_config=job_config)
@@ -180,29 +196,155 @@ class BigQueryExtractor(BaseExtractor):
 
         if dryrun_bytes_estimate > MAX_QUERY_SIZE:
             raise QuerySizeLimitError(
-                "This query will return than {MAX_QUERY_SIZE} bytes"
+                "This query will return more than {MAX_QUERY_SIZE} bytes"
+            )
+        return dryrun_bytes_estimate
+
+    def query_to_hyper_files(
+        self,
+        sql_query: Optional[str] = None,
+        source_table: Optional[str] = None,
+        hyper_table_name: str = "Extract",
+    ) -> Generator[Path, None, None]:
+        """
+        Executes sql_query or exports rows from source_table and writes output
+        to one or more hype files.
+
+        Returns Iterable of Paths to hyper files
+
+        sql_query (string): SQL to pass to the source database
+        source_table (string): Source table ref ("project ID.dataset ID.table ID")
+        hyper_table_name (string): Name of the target Hyper table, default=Extract
+
+        NOTES:
+        - Specify either sql_query OR source_table, error if both specified
+        """
+        extract_prefix = ""
+        extract_destination_uri = ""
+        use_extract = False
+        target_table_def = None
+
+        if not (bool(sql_query) ^ bool(source_table)):
+            raise Exception("Must specify either sql_query OR source_table")
+
+        if sql_query:
+            assert source_table is None
+            dryrun_bytes_estimate = self._estimate_query_bytes(sql_query)
+
+            # if dryrun_bytes_estimate < QUERY_TO_CLOUDSTORAGE_THRESHOLD:
+            logging.info("Executing query using bigquery.table.RowIterator...")
+            # 1: Smaller resultset - keep it simple and query direct via paging Api
+            query_job = bq_client.query(sql_query)
+
+            # Determine table structure
+            query_temp_table = bq_client.get_table(query_job.destination)
+            target_table_def = self.hyper_table_definition(
+                query_temp_table, hyper_table_name
             )
 
-        query_job = bq_client.query(sql_query)
+            query_job_iter = bq_client.list_rows(query_job.destination)
+            path_to_database = self.query_result_to_hyper_file(
+                query_job_iter, target_table_def
+            )
+            yield path_to_database
+            return
+            # else:
+            #     logging.info("Executing query using EXPORT DATA via cloud storage...")
+            #     # 2: Larger resultset - expport via cloud storage
+            #     use_extract = True
+            #     extract_prefix = "staging/{}_{}".format("SQL", uuid.uuid4().hex)
+            #     extract_destination_uri = "gs://{}/{}-*.csv.gz".format(
+            #         self.staging_bucket, extract_prefix
+            #     )
+            #     sql_query = "EXPORT DATA OPTIONS( uri={}, format='CSV', overwrite=true, header=false, field_delimiter=',') AS {}".format(
+            #         extract_destination_uri, sql_query
+            #     )
+            #     query_job = bq_client.query(sql_query)
+            #
+            #     # Determine table structure
+            #     query_temp_table = bq_client.get_table(query_job.destination)
+            #     target_table_def = self.hyper_table_definition(
+            #         query_temp_table, hyper_table_name
+            #     )
+        else:
+            logging.info("Exporting Table:{}...".format(source_table))
+            use_extract = True
+            extract_prefix = "staging/{}_{}".format(source_table, uuid.uuid4().hex)
+            extract_destination_uri = "gs://{}/{}-*.csv.gz".format(
+                self.staging_bucket, extract_prefix
+            )
+            source_table_ref = bq_client.get_table(source_table)
+            target_table_def = self.hyper_table_definition(
+                source_table_ref, hyper_table_name
+            )
+            extract_job_config = bigquery.ExtractJobConfig(
+                compression="GZIP", destination_format="CSV", print_header=False
+            )
+            extract_job = bq_client.extract_table(
+                source_table, extract_destination_uri, job_config=extract_job_config
+            )
+            extract_job.result()  # Waits for job to complete.
+            logger.info(
+                "Exported {} to {}".format(source_table, extract_destination_uri)
+            )
 
-        # Determine table structure
-        query_temp_table = bq_client.get_table(query_job.destination)
-        target_table_def = self._hyper_table_definition(
-            query_temp_table, hyper_table_name
-        )
+        if use_extract:
+            storage_client = storage.Client()
+            bucket = storage_client.bucket(self.staging_bucket)
+            pending_blobs = 0
+            batch_csv_filename = ""
+            for this_blob in bucket.list_blobs(prefix=extract_prefix):
+                logger.info("Downloading blob:{} ...".format(this_blob))
+                # # TODO: better error checking here
 
-        def query_job_iter():
-            return bq_client.list_rows(query_job.destination)
+                temp_csv_filename = tempfile_name(prefix="temp", suffix=".csv")
+                temp_gzip_filename = "{}.gz".format(temp_csv_filename)
+                this_blob.download_to_filename(temp_gzip_filename)
+                logger.info("Unzipping {} ...".format(temp_gzip_filename))
 
-        return self._query_result_to_hyper_files(query_job_iter, target_table_def)
+                # Performance optimization: Concat smaller CSVs into a larger single hyper file
+                if pending_blobs == 0:
+                    # New batch
+                    batch_csv_filename = temp_csv_filename
+                    subprocess.run(
+                        f"gunzip -c {temp_gzip_filename} > {batch_csv_filename}",
+                        shell=True,
+                        check=True,
+                    )
+                    os.remove(Path(temp_gzip_filename))
+
+                else:
+                    # Append to existing batch
+                    subprocess.run(
+                        f"gunzip -c {temp_gzip_filename} >> {batch_csv_filename}",
+                        shell=True,
+                        check=True,
+                    )
+                    os.remove(Path(temp_gzip_filename))
+                pending_blobs += 1
+                if pending_blobs == BLOBS_PER_HYPER_FILE:
+                    path_to_database = self.csv_to_hyper_file(
+                        path_to_csv=batch_csv_filename,
+                        target_table_def=target_table_def,
+                    )
+                    pending_blobs = 0
+                    os.remove(Path(batch_csv_filename))
+                    yield path_to_database
+
+            if pending_blobs:
+                path_to_database = self.csv_to_hyper_file(
+                    path_to_csv=batch_csv_filename, target_table_def=target_table_def
+                )
+                os.remove(Path(batch_csv_filename))
+                yield path_to_database
 
     def load_sample(
         self,
-        source_table,
-        tab_ds_name,
-        sample_rows=SAMPLE_ROWS,
-        publish_mode=TSC.Server.PublishMode.CreateNew,
-    ):
+        source_table: str,
+        tab_ds_name: str,
+        sample_rows: int = SAMPLE_ROWS,
+        publish_mode: TSC.Server.PublishMode = TSC.Server.PublishMode.CreateNew,
+    ) -> None:
         """
         Loads a sample of rows from source_table to Tableau Server
 
@@ -215,90 +357,55 @@ class BigQueryExtractor(BaseExtractor):
         # loads in the first sample_rows of a bigquery table
         # set publish_mode=TSC.Server.PublishMode.Overwrite to refresh a sample
         sql_query = "SELECT * FROM `{}` LIMIT {}".format(source_table, sample_rows)
-        output_hyper_files = self._query_to_hyper_files(sql_query, tab_ds_name)
         first_chunk = True
-        for path_to_database in output_hyper_files:
+        for path_to_database in self.query_to_hyper_files(sql_query=sql_query):
             if first_chunk:
-                self._publish_hyper_file(path_to_database, tab_ds_name, publish_mode)
+                self.publish_hyper_file(path_to_database, tab_ds_name, publish_mode)
                 first_chunk = False
             else:
-                self._update_datasource_from_hyper_file(
+                self.update_datasource_from_hyper_file(
                     path_to_database=path_to_database,
                     tab_ds_name=tab_ds_name,
                     action="INSERT",
                 )
-            self._publish_hyper_file(path_to_database, tab_ds_name, publish_mode)
             os.remove(path_to_database)
 
-    def _extract_to_blobs(self, source_table):
-        # Returns list of blobs
-        # 1: EXTRACT
-        extract_job_config = bigquery.ExtractJobConfig(
-            compression="GZIP", destination_format="CSV"
-        )
-        extract_prefix = "staging/{}_{}".format(source_table, uuid.uuid4().hex)
-        extract_destination_uri = "gs://{}/{}-*.csv.gz".format(
-            self.staging_bucket, extract_prefix
-        )
-        extract_job = bq_client.extract_table(
-            source_table, extract_destination_uri, job_config=extract_job_config
-        )  # API request
-        extract_job.result()  # Waits for job to complete.
-        logger.info("Exported {} to {}".format(source_table, extract_destination_uri))
-
-        # 2: LIST BLOBS
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(self.staging_bucket)
-        return bucket.list_blobs(prefix=extract_prefix)
-
-    def _download_blob(self, blob, local_filename):
-        logger.info("Downloading blob:{}".format(blob))
-        # # TODO: better error checking here
-        blob.download_to_filename("{}.gz".format(local_filename))
-        subprocess.run(["gunzip", "{}.gz".format(local_filename)], check=True)
-
     def export_load(
-        self, source_table, tab_ds_name, publish_mode=TSC.Server.PublishMode.CreateNew
-    ):
+        self,
+        source_table: str,
+        tab_ds_name: str,
+        publish_mode: TSC.Server.PublishMode = TSC.Server.PublishMode.CreateNew,
+    ) -> None:
         """
-        Bulk export the contents of source_table and load to a Tableau Server
+        Bulk export the contents of source_table and load to Tableau Server
 
-        source_table (string): Source table ref ("project ID.dataset ID.table ID")
+        source_table (string): Source table identifier
         tab_ds_name (string): Target datasource name
         publish_mode: One of TSC.Server.[Overwrite|CreateNew] (default=CreateNew)
         """
-        # Uses the bigquery export api to split large table to csv for load
+
         source_table_ref = bq_client.get_table(source_table)
-        target_table_def = self._hyper_table_definition(source_table_ref)
+        target_table_def = self.hyper_table_definition(source_table_ref)
         first_chunk = True
-        for blob in self._extract_to_blobs(source_table):
-            temp_csv_filename = tempfile_name(prefix="temp", suffix=".csv")
-            self._download_blob(blob, temp_csv_filename)
-            output_hyper_files = self._csv_to_hyper_files(
-                temp_csv_filename, target_table_def
-            )
-            for path_to_database in output_hyper_files:
-                if first_chunk:
-                    self._publish_hyper_file(
-                        path_to_database, tab_ds_name, publish_mode
-                    )
-                    first_chunk = False
-                else:
-                    self._update_datasource_from_hyper_file(
-                        path_to_database=path_to_database,
-                        tab_ds_name=tab_ds_name,
-                        action="INSERT",
-                    )
-                os.remove(path_to_database)
-            os.remove(Path(temp_csv_filename))
+        for path_to_database in self.query_to_hyper_files(source_table=source_table):
+            if first_chunk:
+                self.publish_hyper_file(path_to_database, tab_ds_name, publish_mode)
+                first_chunk = False
+            else:
+                self.update_datasource_from_hyper_file(
+                    path_to_database=path_to_database,
+                    tab_ds_name=tab_ds_name,
+                    action="INSERT",
+                )
+            os.remove(path_to_database)
 
     def append_to_datasource(
         self,
-        tab_ds_name,
-        sql_query=None,
-        source_table=None,
-        changeset_table_name="new_rows",
-    ):
+        tab_ds_name: str,
+        sql_query: Optional[str] = None,
+        source_table: Optional[str] = None,
+        changeset_table_name: str = "new_rows",
+    ) -> None:
         """
         Appends the result of sql_query to a datasource on Tableau Server
 
@@ -309,55 +416,33 @@ class BigQueryExtractor(BaseExtractor):
             contains the changeset (default="new_rows")
 
         NOTES:
-        - Specify either sql_query OR source_table, error if both specified
+        - Must specify either sql_query OR source_table, error if both specified
         """
 
         if not (bool(sql_query) ^ bool(source_table)):
             raise Exception("Must specify either sql_query OR source_table")
-        if sql_query:
-            # Execute query to generate append changeset - slower than bulk extract
-            output_hyper_files = self._query_to_hyper_files(
-                sql_query, changeset_table_name
-            )
 
-            for path_to_database in output_hyper_files:
-                self._update_datasource_from_hyper_file(
-                    path_to_database=path_to_database,
-                    tab_ds_name=tab_ds_name,
-                    changeset_table_name=changeset_table_name,
-                    action="INSERT",
-                )
-                os.remove(path_to_database)
-        if source_table:
-            # Bulk extract and append from a changeset that is stored in a bq table
-            source_table_ref = bq_client.get_table(source_table)
-            target_table_def = self._hyper_table_definition(
-                source_table_ref, hyper_table_name=changeset_table_name
+        for path_to_database in self.query_to_hyper_files(
+            sql_query=sql_query,
+            source_table=source_table,
+            hyper_table_name=changeset_table_name,
+        ):
+            self.update_datasource_from_hyper_file(
+                path_to_database=path_to_database,
+                tab_ds_name=tab_ds_name,
+                changeset_table_name=changeset_table_name,
+                action="INSERT",
             )
-            for blob in self._extract_to_blobs(source_table):
-                temp_csv_filename = tempfile_name(prefix="temp", suffix=".csv")
-                self._download_blob(blob, temp_csv_filename)
-                output_hyper_files = self._csv_to_hyper_files(
-                    temp_csv_filename, target_table_def
-                )
-                for path_to_database in output_hyper_files:
-                    self._update_datasource_from_hyper_file(
-                        path_to_database=path_to_database,
-                        tab_ds_name=tab_ds_name,
-                        changeset_table_name=changeset_table_name,
-                        action="INSERT",
-                    )
-                    os.remove(path_to_database)
-                os.remove(Path(temp_csv_filename))
+            os.remove(path_to_database)
 
     def update_datasource(
         self,
-        tab_ds_name,
-        sql_query=None,
-        source_table=None,
-        match_columns=None,
-        match_conditions_json=None,
-        changeset_table_name="updated_rows",
+        tab_ds_name: str,
+        sql_query: Optional[str] = None,
+        source_table: Optional[str] = None,
+        match_columns: Union[List[str], None] = None,
+        match_conditions_json: Optional[object] = None,
+        changeset_table_name: str = "updated_rows",
     ):
         """
         Updates a datasource on Tableau Server with the changeset from sql_query
@@ -375,6 +460,7 @@ class BigQueryExtractor(BaseExtractor):
         - Specify either match_columns OR match_conditions_json, error if both specified
         - Specify either sql_query OR source_table, error if both specified
         """
+
         if not ((match_columns is None) ^ (match_conditions_json is None)):
             raise Exception(
                 "Must specify either match_columns OR match_conditions_json"
@@ -382,51 +468,29 @@ class BigQueryExtractor(BaseExtractor):
         if not ((sql_query is None) ^ (source_table is None)):
             raise Exception("Must specify either sql_query OR source_table")
 
-        if sql_query:
-            # Execute query to generate update changeset - slower than bulk extract
-            output_hyper_files = self._query_to_hyper_files(
-                sql_query, changeset_table_name
+        for path_to_database in self.query_to_hyper_files(
+            sql_query=sql_query,
+            source_table=source_table,
+            hyper_table_name=changeset_table_name,
+        ):
+            self.update_datasource_from_hyper_file(
+                path_to_database=path_to_database,
+                tab_ds_name=tab_ds_name,
+                match_columns=match_columns,
+                match_conditions_json=match_conditions_json,
+                changeset_table_name=changeset_table_name,
+                action="UPDATE",
             )
-            for path_to_database in output_hyper_files:
-                self._update_datasource_from_hyper_file(
-                    path_to_database,
-                    tab_ds_name,
-                    match_columns,
-                    match_conditions_json,
-                    changeset_table_name,
-                )
-                os.remove(path_to_database)
-        if source_table:
-            # Bulk extract and update from a changeset that is stored in a bq table
-            source_table_ref = bq_client.get_table(source_table)
-            target_table_def = self._hyper_table_definition(
-                source_table_ref, hyper_table_name=changeset_table_name
-            )
-            for blob in self._extract_to_blobs(source_table):
-                temp_csv_filename = tempfile_name(prefix="temp", suffix=".csv")
-                self._download_blob(blob, temp_csv_filename)
-                output_hyper_files = self._csv_to_hyper_files(
-                    temp_csv_filename, target_table_def
-                )
-                for path_to_database in output_hyper_files:
-                    self._update_datasource_from_hyper_file(
-                        path_to_database,
-                        tab_ds_name,
-                        match_columns,
-                        match_conditions_json,
-                        changeset_table_name,
-                    )
-                    os.remove(path_to_database)
-                os.remove(Path(temp_csv_filename))
+            os.remove(path_to_database)
 
     def delete_from_datasource(
         self,
-        tab_ds_name,
-        sql_query=None,
-        source_table=None,
-        match_columns=None,
-        match_conditions_json=None,
-        changeset_table_name="deleted_rowids",
+        tab_ds_name: str,
+        sql_query: Optional[str] = None,
+        source_table: Optional[str] = None,
+        match_columns: Union[List[str], None] = None,
+        match_conditions_json: Optional[object] = None,
+        changeset_table_name: str = "deleted_rowids",
     ):
         """
         Delete rows matching the changeset from sql_query from a datasource on Tableau Server
@@ -462,48 +526,28 @@ class BigQueryExtractor(BaseExtractor):
                 raise Exception(
                     "Must specify match_conditions_json if sql_query and source_table are both None"
                 )
-            self._update_datasource_from_hyper_file(
-                None, tab_ds_name, None, match_conditions_json, None,
+            self.update_datasource_from_hyper_file(
+                path_to_database=None,
+                tab_ds_name=tab_ds_name,
+                match_columns=None,
+                match_conditions_json=match_conditions_json,
+                changeset_table_name=None,
             )
         else:
-            if sql_query:
-                # Execute query to generate update changeset - slower than bulk extract
-                output_hyper_files = self._query_to_hyper_files(
-                    sql_query, changeset_table_name
+            for path_to_database in self.query_to_hyper_files(
+                sql_query=sql_query,
+                source_table=source_table,
+                hyper_table_name=changeset_table_name,
+            ):
+                self.update_datasource_from_hyper_file(
+                    path_to_database=path_to_database,
+                    tab_ds_name=tab_ds_name,
+                    match_columns=match_columns,
+                    match_conditions_json=match_conditions_json,
+                    changeset_table_name=changeset_table_name,
+                    action="DELETE",
                 )
-                for path_to_database in output_hyper_files:
-                    self._update_datasource_from_hyper_file(
-                        path_to_database,
-                        tab_ds_name,
-                        match_columns,
-                        match_conditions_json,
-                        changeset_table_name,
-                        action="DELETE",
-                    )
-                    os.remove(path_to_database)
-            if source_table:
-                # Bulk extract and update from a changeset that is stored in a bq table
-                source_table_ref = bq_client.get_table(source_table)
-                target_table_def = self._hyper_table_definition(
-                    source_table_ref, hyper_table_name=changeset_table_name
-                )
-                for blob in self._extract_to_blobs(source_table):
-                    temp_csv_filename = tempfile_name(prefix="temp", suffix=".csv")
-                    self._download_blob(blob, temp_csv_filename)
-                    output_hyper_files = self._csv_to_hyper_files(
-                        temp_csv_filename, target_table_def
-                    )
-                    for path_to_database in output_hyper_files:
-                        self._update_datasource_from_hyper_file(
-                            path_to_database,
-                            tab_ds_name,
-                            match_columns,
-                            match_conditions_json,
-                            changeset_table_name,
-                            action="DELETE",
-                        )
-                        os.remove(path_to_database)
-                    os.remove(Path(temp_csv_filename))
+                os.remove(path_to_database)
 
 
 def main():

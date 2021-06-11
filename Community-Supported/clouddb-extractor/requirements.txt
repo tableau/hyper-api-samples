@@ -31,5 +31,10 @@ tableauhyperapi==0.0.12805
 tableauserverclient==0.15.0
 toml==0.10.2
 typed-ast==1.4.3
+types-filelock==0.1.3
+types-futures==0.1.3
+types-protobuf==0.1.11
+types-requests==0.1.9
+typing==3.7.4.3
 typing-extensions==3.10.0.0
 urllib3==1.26.5
