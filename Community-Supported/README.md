@@ -18,14 +18,15 @@ The community samples focus on individual use cases and are Python-only. They ha
   - Shows a simple conversion of a `.hyper` database to a CSV file.
 - [__list-hyper-contents__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/list-hyper-contents)
   - Lists all schemas/tables/columns contained within a `.hyper` file.
+- [__parquet-to-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/parquet-to-hyper)
+  - Demonstrates how to create a `.hyper` file from an Apache Parquet file.
 - [__publish-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/publish-hyper)
   - Simple example of publishing single-table `.hyper` file.
 - [__publish-multi-table-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/publish-multi-table-hyper)
   - Demonstrates the full end-to-end workflow of how to create a multi-table `.hyper` file, place the extract into a `.tdsx`, and publish to Tableau Online or Server.
 - [__s3-to-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/s3-to-hyper)
   - Demonstrates how to create a `.hyper` file from a wildcard union on text files held in an AWS S3 bucket. The extract is then placed in a `.tdsx` file and published to Tableau Online or Server. 
-- [__parquet-to-hyper__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/parquet-to-hyper)
-  - Demonstrates how to create a `.hyper` file from an Apache Parquet file.
+
 
 </br>
 </br>
