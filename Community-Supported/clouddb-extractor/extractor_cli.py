@@ -21,19 +21,25 @@ import logging
 import argparse
 import getpass
 import json
+import yaml
 
 import bigquery_extractor
 
 EXTRACTORS = {"bigquery": bigquery_extractor.BigQueryExtractor}
 DEFAULT_EXTRACTOR = "bigquery"
-MAX_QUERY_SIZE = 100 * 1024 * 1024  # 100MB
 SAMPLE_ROWS = 1000
-TABLEAU_PROJECT = "HyperAPITests"
-TABLEAU_DATASOURCE_NAME = "Orders"
-TABLEAU_HOSTNAME = "http://localhost"
-DEFAULT_SITE_ID = ""
-BUCKET_NAME = "emea_se"
 
+#Load defaults
+config=yaml.safe_load(open("config.yml"))
+tableau_env=config.get('tableau_env')
+cloud_env=config.get('cloud_env')
+TABLEAU_PROJECT = tableau_env.get('project')
+TABLEAU_HOSTNAME = tableau_env.get('server_address')
+DEFAULT_SITE_ID = tableau_env.get('site_id')
+BUCKET_NAME = cloud_env.get('bucket_name')
+
+class IllegalArgumentError(ValueError):
+    pass
 
 def exclusive_args(args, *arg_names, required=True, message=None):
     count_args = 0
@@ -43,19 +49,19 @@ def exclusive_args(args, *arg_names, required=True, message=None):
     if required:
         if count_args != 1:
             if message is None:
-                raise argparse.ArgumentError(
+                raise IllegalArgumentError(
                     "Must specify one of {}".format(",".join(arg_names))
                 )
             else:
-                raise argparse.ArgumentError(message)
+                raise IllegalArgumentError(message)
     else:
         if count_args > 1:
             if message is None:
-                raise argparse.ArgumentError(
+                raise IllegalArgumentError(
                     "Can only specify one of {}".format(",".join(arg_names))
                 )
             else:
-                raise argparse.ArgumentError(message)
+                raise IllegalArgumentError(message)
 
 
 def required_arg(args, arg_name, message=None):
@@ -158,7 +164,6 @@ parser.add_argument(
     help="Define conditions for matching rows in json format when command=[update|delete]."
     "See Hyper API guide for details. ",
 )
-# TODO: Add option to authenticate with api token
 parser.add_argument(
     "--tableau_username", "-U", help="Tableau user name",
 )
@@ -179,7 +184,6 @@ TABLEAU_HOSTNAME = args.tableau_hostname
 TABLEAU_PROJECT = args.tableau_project
 TABLEAU_SITE_ID = args.tableau_site_id
 extractor_class = EXTRACTORS.get(args.extractor)
-extractor = {}
 exclusive_args(
     args,
     "tableau_token_name",

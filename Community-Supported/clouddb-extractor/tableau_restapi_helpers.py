@@ -29,7 +29,7 @@ import requests  # Contains methods used to make HTTP requests
 import xml.etree.ElementTree as ET  # Contains methods used to build and parse XML
 from requests.packages.urllib3.fields import RequestField
 from requests.packages.urllib3.filepost import encode_multipart_formdata
-
+from urllib.parse import quote as url_encode
 import os
 import uuid
 
@@ -183,7 +183,6 @@ def upload_file(file_path, server, auth_token, site_id):
     """
     logger.info("Uploading {} to Tableau Server...".format(file_path))
     file = os.path.basename(file_path)
-    filename, file_extension = file.split(".", 1)
 
     logger.info(
         "\n3. Publishing '{0}' in {1}MB chunks (workbook over 64MB)".format(
@@ -244,7 +243,7 @@ def patch_datasource(
     )
     if file_upload_id is not None:
         patch_url += "/data"
-        patch_url += "?uploadSessionId={0}".format(file_upload_id)
+        patch_url += "?uploadSessionId={0}".format(url_encode(file_upload_id))
 
     logger.info(
         "Updating datasource {} on Tableau Server {}:{}".format(
@@ -257,15 +256,14 @@ def patch_datasource(
         headers={
             "x-tableau-auth": auth_token,
             "RequestID": str(request_id),
-            "content-type": "application/json",
+            "Content-Type": "application/json",
             "Accept": "application/xml",
         },
     )
 
     check_status(server_response, 202)
     # Get Asynchronous Job ID
-    server_response = _encode_for_display(server_response.text)
-    parsed_response = ET.fromstring(server_response)
+    parsed_response = ET.fromstring(server_response.text)
     async_job_id = parsed_response.find("t:job", namespaces=xmlns).get("id")
     logger.info(f"Asynchronous Job ID:{async_job_id}")
 

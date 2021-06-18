@@ -168,7 +168,7 @@ class BaseExtractor(ABC):
             self.tableau_auth = TSC.PersonalAccessTokenAuth(
                 token_name=tableau_token_name,
                 personal_access_token=tableau_token_secret,
-                site_id="",
+                site_id=tableau_site_id,
             )
         else:
             self.tableau_auth = TSC.TableauAuth(
@@ -636,7 +636,7 @@ class BaseExtractor(ABC):
     ) -> Generator[Path, None, None]:
         """
         Executes sql_query or exports rows from source_table and writes output
-        to one or more hype files.
+        to one or more hyper files.
 
         Returns Iterable of Paths to hyper files
 
@@ -727,23 +727,6 @@ class BaseExtractor(ABC):
         - Specify either match_columns OR match_conditions_json, error if both specified
         - Specify either sql_query OR source_table, error if both specified
         """
-
-    # @abstractmethod
-    # def upsert_to_datasource(
-    #     self, sql_query, tab_ds_name, match_columns=None, match_conditions_json=None
-    # ):
-    #     """
-    #     TODO: NOT IMPLEMENTED YET IN PRERELEASE
-    #     Upsert/Merge the changeset from sql_query into a datasource on Tableau Server
-    #
-    #     sql_query (string): The query string that generates the changeset
-    #     tab_ds_name (string): Target datasource name
-    #     match_columns (array of tuples): Array of (source_col, target_col) pairs
-    #     match_conditions_json (string): Define conditions for matching rows in json format.  See Hyper API guide for details.
-    #     changeset_table_name (string): The name of the table in the hyper file that contains the changeset (default="updated_rows")
-    #
-    #     NOTE: match_columns overrides match_conditions_json if both are specified
-    #     """
 
     @abstractmethod
     def delete_from_datasource(

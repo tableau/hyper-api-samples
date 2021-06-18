@@ -24,6 +24,7 @@ pyasn1-modules==0.2.8
 pycparser==2.20
 pyparsing==2.4.7
 pytz==2021.1
+PyYAML==5.4.1
 requests==2.25.1
 rsa==4.7.2
 six==1.16.0

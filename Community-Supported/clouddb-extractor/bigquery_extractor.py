@@ -29,7 +29,6 @@ from base_extractor import (
 )
 from typing import Dict, Optional, Any, Union, List, Generator
 
-# from google.cloud.bigquery_storage import BigQueryReadClient
 from google.cloud import bigquery
 from google.cloud import storage
 
@@ -208,7 +207,7 @@ class BigQueryExtractor(BaseExtractor):
     ) -> Generator[Path, None, None]:
         """
         Executes sql_query or exports rows from source_table and writes output
-        to one or more hype files.
+        to one or more hyper files.
 
         Returns Iterable of Paths to hyper files
 
