@@ -22,9 +22,10 @@ For a full list of methods and args see the docstrings in the BaseExtractor clas
 ## Contents
 * __base_extractor.py__ - provides an Abstract Base Class with some utility methods to extract from cloud databases to "live to hyper" Tableau Datasources. Database specific Extractor classes extend this to manage queries, exports and schema discovery via the database vendor supplied client libraries.
 * __bigquery_extractor.py__ - Google BigQuery implementation of Base Hyper Extractor ABC
-* __restapi_helpers.py__ - The helper functions in this module are only used when REST API functionality is not yet available in the standard tableauserverclient libraries. (e.g. PATCH for update/upsert. Once these get added to the standard client libraries then this module will be refactored out.
+* __config.yml__ - Defines site defaults for extractor_cli utility
 * __extractor_cli.py__ - Simple CLI Wrapper around Extractor Classes
 * __requirements.txt__ - List of third party python library dependencies - install with "pip install -r requirements.txt"
+* __restapi_helpers.py__ - The helper functions in this module are only used when REST API functionality is not yet available in the standard tableauserverclient libraries. (e.g. PATCH for update/upsert. Once these get added to the standard client libraries then this module will be refactored out.
 
 ## CLI Utility
 We suggest that you import one of the Extractor implementations and call this directly however we've included a command line utility to illustrate the key functionality:
