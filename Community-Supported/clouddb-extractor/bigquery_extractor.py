@@ -42,14 +42,6 @@ MAX_QUERY_SIZE: int = 1024 * 1024 * 1024  # 1GB
       Note: this is not enforced if extracting from a Table, only for SQL Query
 """
 
-# TODO: Implement query via cloud storage once parquet support is out of beta.
-# No straight-forward way of determining schema today when using EXPORT DATA
-#  QUERY_TO_CLOUDSTORAGE_THRESHOLD: int = 50 * 1024 * 1024  # 50MB
-# """
-#     QUERY_TO_CLOUDSTORAGE_THRESHOLD (int): Create extract via Cloud Storage if query result
-#     exceeds specified number of bytes
-# """
-
 BLOBS_PER_HYPER_FILE: int = 5
 """
     BLOBS_PER_HYPER_FILE (int): Performance optimization - BigQuery splits extracts into 1G chunks
@@ -230,9 +222,7 @@ class BigQueryExtractor(BaseExtractor):
             assert source_table is None
             dryrun_bytes_estimate = self._estimate_query_bytes(sql_query)
 
-            # if dryrun_bytes_estimate < QUERY_TO_CLOUDSTORAGE_THRESHOLD:
             logging.info("Executing query using bigquery.table.RowIterator...")
-            # 1: Smaller resultset - keep it simple and query direct via paging Api
             query_job = bq_client.query(sql_query)
 
             # Determine table structure
@@ -247,24 +237,6 @@ class BigQueryExtractor(BaseExtractor):
             )
             yield path_to_database
             return
-            # else:
-            #     logging.info("Executing query using EXPORT DATA via cloud storage...")
-            #     # 2: Larger resultset - expport via cloud storage
-            #     use_extract = True
-            #     extract_prefix = "staging/{}_{}".format("SQL", uuid.uuid4().hex)
-            #     extract_destination_uri = "gs://{}/{}-*.csv.gz".format(
-            #         self.staging_bucket, extract_prefix
-            #     )
-            #     sql_query = "EXPORT DATA OPTIONS( uri={}, format='CSV', overwrite=true, header=false, field_delimiter=',') AS {}".format(
-            #         extract_destination_uri, sql_query
-            #     )
-            #     query_job = bq_client.query(sql_query)
-            #
-            #     # Determine table structure
-            #     query_temp_table = bq_client.get_table(query_job.destination)
-            #     target_table_def = self.hyper_table_definition(
-            #         query_temp_table, hyper_table_name
-            #     )
         else:
             logging.info("Exporting Table:{}...".format(source_table))
             use_extract = True
