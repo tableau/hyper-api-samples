@@ -80,7 +80,7 @@ def required_arg(args, arg_name, message=None):
 consoleHandler = logging.StreamHandler()
 consoleHandler.setLevel(logging.INFO)
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s - %(name)s %(funcName)s - %(levelname)s - %(message)s",
     handlers=[logging.FileHandler("debug.log"), consoleHandler],
 )
