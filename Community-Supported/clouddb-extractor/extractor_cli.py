@@ -29,10 +29,10 @@ EXTRACTORS = {"bigquery": bigquery_extractor.BigQueryExtractor}
 DEFAULT_EXTRACTOR = "bigquery"
 SAMPLE_ROWS = 1000
 
-#Load defaults
-config=yaml.safe_load(open("config.yml"))
-tableau_env=config.get('tableau_env')
-cloud_env=config.get('cloud_env')
+# Load defaults
+config = yaml.safe_load(open("config.yml"))
+tableau_env = config.get('tableau_env')
+cloud_env = config.get('cloud_env')
 TABLEAU_PROJECT = tableau_env.get('project')
 TABLEAU_HOSTNAME = tableau_env.get('server_address')
 DEFAULT_SITE_ID = tableau_env.get('site_id')

@@ -3,9 +3,22 @@
 Tableau Community supported Hyper API sample
 
 This module provies an Abstract Base Class with some utility methods to extract
-from cloud databases to "live to hyper" Tableau Datasources.
-Database specific Extractor classes extend this to manage queries, exports and
-schema discovery via the database vendor supplied client libraries.
+from cloud databases to "live to hyper" Tableau Datasources.  This implements a
+basic set of query and table extract functions based on the Python DBAPI standard.
+
+The simplest way to add an implementation for a specific database is to extend this
+with a database specific class that implements the following abstract methods:
+- source_cursor() - Handles authentication and other implementation specific
+ dependencies or optimizations (e.g. arraysize) and returns a DBAPI Cursor
+ to the source database
+- hyper_sql_type(source_column) - Finds the corresponding Hyper column type for
+ the specified source column
+- hyper_table_definition(source_table, hyper_table_name) - Runs introspection
+ against the named source table and returns a Hyper table definition
+
+Database specific Extractor classes may override the basic DBAPIv2 query handing
+methods to add optimisations for exports via cloud storage etc based on additional
+functionality offered by the database vendor supplied client libraries.
 
 -----------------------------------------------------------------------------
 
@@ -23,6 +36,7 @@ as a template to start your own projects.
 from abc import ABC, abstractmethod
 import logging
 from pathlib import Path
+import os
 import time
 import uuid
 from filelock import FileLock
@@ -42,6 +56,19 @@ from tableauhyperapi import (
 )
 
 logger = logging.getLogger("hyper_samples.extractor.base")
+
+
+def log_execution_time(method):
+    # Decorator used during debugging to time execution
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        logging.info("{0!r} completed in {1:2.4F} ms".format(
+            method.__name__, (te - ts) * 1000))
+        return result
+    return log_execution_time
+
 
 TELEMETRY: Telemetry = Telemetry.SEND_USAGE_DATA_TO_TABLEAU
 """
@@ -82,7 +109,8 @@ DEFAULT_SITE_ID: str = ""
     DEFAULT_SITE_ID (str): Default site ID
 """
 
-HYPER_CONNECTION_PARAMETERS: Dict[str, str] = {"lc_time": "en_GB", "date_style": "YMD"}
+HYPER_CONNECTION_PARAMETERS: Dict[str, str] = {
+    "lc_time": "en_GB", "date_style": "YMD"}
 """
     HYPER_CONNECTION_PARAMETERS (dict): Options are documented in the Tableau Hyper API
     documentation, chapter “Connection Settings
@@ -103,6 +131,12 @@ HYPER_CONNECTION_PARAMETERS: Dict[str, str] = {"lc_time": "en_GB", "date_style":
 
         Default value: MDY
         Accepted values: MDY, DMY, YMD, YDM
+"""
+
+DBAPI_BATCHSIZE: int = 10000
+"""
+    DBAPI_BATCHSIZE (int): Window size for query execution via DBAPI Cursor
+    Defines how many lines are fetched for each call to fetchmany().
 """
 
 
@@ -176,11 +210,13 @@ class BaseExtractor(ABC):
                 password=tableau_password,
                 site_id=tableau_site_id,
             )
-        self.tableau_server = TSC.Server(tableau_hostname, use_server_version=True)
+        self.tableau_server = TSC.Server(
+            tableau_hostname, use_server_version=True)
         self.tableau_server.auth.sign_in(self.tableau_auth)
         self.tableau_project_name = tableau_project
         self.tableau_project_id = self._get_project_id(tableau_project)
         self.staging_bucket = staging_bucket
+        self.dbapi_batchsize = DBAPI_BATCHSIZE
 
     def _datasource_lock(self, tab_ds_name: str) -> FileLock:
         """
@@ -247,7 +283,8 @@ class BaseExtractor(ABC):
             )
         if finish_code == "0":
             logger.info(
-                "Job {} Completed: Finish Code: {}".format(async_job_id, finish_code)
+                "Job {} Completed: Finish Code: {}".format(
+                    async_job_id, finish_code)
             )
         else:
             full_job_details = REST.get_job_details(
@@ -261,24 +298,31 @@ class BaseExtractor(ABC):
                     async_job_id, finish_code, full_job_details
                 )
             )
-            logger.error("Check jobs pane in Tableau for detailed failure information")
+            logger.error(
+                "Check jobs pane in Tableau for detailed failure information")
 
         return finish_code
 
     def query_result_to_hyper_file(
         self,
-        query_result_iter: Iterable[Iterable[object]],
         target_table_def: TableDefinition,
+        cursor: Any = None,
+        query_result_iter: Iterable[Iterable[object]] = None,
     ) -> Path:
         """
         Writes query output to a Hyper file
         Returns Path to hyper file
 
-        query_result_iter : Iterator containing result rows
         target_table_def (TableDefinition): Schema for target extract table
+        cursor : A Python DBAPI v2 compliant Cursor object
+        query_result_iter : Iterator containing result rows
+
+        Must specify either cursor or query_result_iter, Error if both are specified
         """
 
-        # TODO: Split output into smaller files when query result > MAX_ROWS_PER_FILE
+        if not (bool(cursor) ^ bool(query_result_iter)):
+            raise Exception("Must specify either cursor OR query_result_iter")
+
         path_to_database = Path(tempfile_name(prefix="temp_", suffix=".hyper"))
 
         with HyperProcess(telemetry=TELEMETRY) as hyper:
@@ -294,10 +338,20 @@ class BaseExtractor(ABC):
                 connection.catalog.create_schema(
                     schema=target_table_def.table_name.schema_name
                 )
-                connection.catalog.create_table(table_definition=target_table_def)
+                connection.catalog.create_table(
+                    table_definition=target_table_def)
                 with Inserter(connection, target_table_def) as inserter:
-                    inserter.add_rows(query_result_iter)
-                    inserter.execute()
+                    if query_result_iter is not None:
+                        inserter.add_rows(query_result_iter)
+                        inserter.execute()
+                    else:
+                        while True:
+                            rows = cursor.fetchmany(size=self.dbapi_batchsize)
+                            if rows:
+                                inserter.add_rows(rows)
+                            else:
+                                break
+                        inserter.execute()
 
                 row_count = connection.execute_scalar_query(
                     query=f"SELECT COUNT(*) FROM {target_table_def.table_name}"
@@ -323,11 +377,9 @@ class BaseExtractor(ABC):
         path_to_csv (str): CSV file containing result rows
         target_table_def (TableDefinition): Schema for target extract table
         csv_format_options (str): Specify csv file format options for COPY command
-
-        NOTE: The following CSV format options are used: (format csv, NULL 'NULL', delimiter ',', header FALSE)
+            default csv format options: "NULL 'NULL', delimiter ',', header FALSE"
         """
 
-        # TODO: Split output into smaller files when csv contains > MAX_ROWS_PER_FILE
         path_to_database = Path(tempfile_name(prefix="temp_", suffix=".hyper"))
         with HyperProcess(telemetry=TELEMETRY) as hyper:
             with Connection(
@@ -340,7 +392,8 @@ class BaseExtractor(ABC):
                 connection.catalog.create_schema(
                     schema=target_table_def.table_name.schema_name
                 )
-                connection.catalog.create_table(table_definition=target_table_def)
+                connection.catalog.create_table(
+                    table_definition=target_table_def)
 
                 count_rows = connection.execute_command(
                     command=f"COPY {target_table_def.table_name} from {escape_string_literal(path_to_csv)} "
@@ -371,7 +424,8 @@ class BaseExtractor(ABC):
         # This is used to create new datasources and to implement the APPEND action
         #
         # Create the datasource object with the project_id
-        datasource = TSC.DatasourceItem(self.tableau_project_id, name=tab_ds_name)
+        datasource = TSC.DatasourceItem(
+            self.tableau_project_id, name=tab_ds_name)
 
         logger.info(f"Publishing {path_to_database} to {tab_ds_name}...")
         # Publish datasource
@@ -380,7 +434,8 @@ class BaseExtractor(ABC):
             datasource = self.tableau_server.datasources.publish(
                 datasource, path_to_database, publish_mode
             )
-        logger.info("Datasource published. Datasource ID: {0}".format(datasource.id))
+        logger.info(
+            "Datasource published. Datasource ID: {0}".format(datasource.id))
         return datasource.id
 
     def update_datasource_from_hyper_file(
@@ -420,7 +475,8 @@ class BaseExtractor(ABC):
                     }
                 )
             if len(match_conditions_args) > 1:
-                match_conditions_json = {"op": "and", "args": match_conditions_args}
+                match_conditions_json = {
+                    "op": "and", "args": match_conditions_args}
             else:
                 match_conditions_json = match_conditions_args[0]
 
@@ -605,11 +661,17 @@ class BaseExtractor(ABC):
                 )
 
     @abstractmethod
+    def new_source_cursor(self) -> Any:
+        """
+        Returns a DBAPI Cursor to the source database
+        """
+
+    @abstractmethod
     def hyper_sql_type(self, source_column: Any) -> SqlType:
         """
-        Finds the correct Hyper column type for source_column
+        Finds the corresponding Hyper column type for source_column
 
-        source_column (obj): Source column descriptor
+        source_column (obj): Source column descriptor (e.g. DBAPI Column description tuple)
 
         Returns a tableauhyperapi.SqlType Object
         """
@@ -619,15 +681,14 @@ class BaseExtractor(ABC):
         self, source_table: Any, hyper_table_name: str = "Extract"
     ) -> TableDefinition:
         """
-        Build a hyper table definition from source_schema
+        Build a hyper table definition from source_table
 
-        source_table (obj): Source table descriptor
+        source_table (obj): Source table or query resultset descriptor
         hyper_table_name (string): Name of the target Hyper table, default="Extract"
 
         Returns a tableauhyperapi.TableDefinition Object
         """
 
-    @abstractmethod
     def query_to_hyper_files(
         self,
         sql_query: Optional[str] = None,
@@ -636,7 +697,9 @@ class BaseExtractor(ABC):
     ) -> Generator[Path, None, None]:
         """
         Executes sql_query or exports rows from source_table and writes output
-        to one or more hyper files.
+        to one or more hyper files.  This base implementation uses the standard
+        DBAPIv2 cursor methods and this should be overwritten if your native
+        database client libraries include more efficient export etc. routines.
 
         Returns Iterable of Paths to hyper files
 
@@ -648,7 +711,22 @@ class BaseExtractor(ABC):
         - Specify either sql_query OR source_table, error if both specified
         """
 
-    @abstractmethod
+        if not (bool(sql_query) ^ bool(source_table)):
+            raise Exception("Must specify either sql_query OR source_table")
+
+        if source_table:
+            sql_query = "SELECT * from {}".format(source_table)
+
+        cursor = self.new_source_cursor()
+        cursor.execute(sql_query)
+        target_table_def = self.hyper_table_definition(
+            source_table=cursor.description, hyper_table_name=hyper_table_name
+        )
+        path_to_database = self.query_result_to_hyper_file(target_table_def=target_table_def,
+                                                           cursor=cursor)
+        yield path_to_database
+        return
+
     def load_sample(
         self,
         source_table: str,
@@ -665,7 +743,24 @@ class BaseExtractor(ABC):
         sample_rows (int): How many rows to include in the sample (default=SAMPLE_ROWS)
         """
 
-    @abstractmethod
+        # loads in the first sample_rows of a bigquery table
+        # set publish_mode=TSC.Server.PublishMode.Overwrite to refresh a sample
+        sql_query = "SELECT * FROM `{}` LIMIT {}".format(
+            source_table, sample_rows)
+        first_chunk = True
+        for path_to_database in self.query_to_hyper_files(sql_query=sql_query):
+            if first_chunk:
+                self.publish_hyper_file(
+                    path_to_database, tab_ds_name, publish_mode)
+                first_chunk = False
+            else:
+                self.update_datasource_from_hyper_file(
+                    path_to_database=path_to_database,
+                    tab_ds_name=tab_ds_name,
+                    action="INSERT",
+                )
+            os.remove(path_to_database)
+
     def export_load(
         self,
         source_table: str,
@@ -680,7 +775,20 @@ class BaseExtractor(ABC):
         publish_mode: One of TSC.Server.[Overwrite|CreateNew] (default=CreateNew)
         """
 
-    @abstractmethod
+        first_chunk = True
+        for path_to_database in self.query_to_hyper_files(source_table=source_table):
+            if first_chunk:
+                self.publish_hyper_file(
+                    path_to_database, tab_ds_name, publish_mode)
+                first_chunk = False
+            else:
+                self.update_datasource_from_hyper_file(
+                    path_to_database=path_to_database,
+                    tab_ds_name=tab_ds_name,
+                    action="INSERT",
+                )
+            os.remove(path_to_database)
+
     def append_to_datasource(
         self,
         tab_ds_name: str,
@@ -701,7 +809,22 @@ class BaseExtractor(ABC):
         - Must specify either sql_query OR source_table, error if both specified
         """
 
-    @abstractmethod
+        if not (bool(sql_query) ^ bool(source_table)):
+            raise Exception("Must specify either sql_query OR source_table")
+
+        for path_to_database in self.query_to_hyper_files(
+            sql_query=sql_query,
+            source_table=source_table,
+            hyper_table_name=changeset_table_name,
+        ):
+            self.update_datasource_from_hyper_file(
+                path_to_database=path_to_database,
+                tab_ds_name=tab_ds_name,
+                changeset_table_name=changeset_table_name,
+                action="INSERT",
+            )
+            os.remove(path_to_database)
+
     def update_datasource(
         self,
         tab_ds_name: str,
@@ -728,7 +851,28 @@ class BaseExtractor(ABC):
         - Specify either sql_query OR source_table, error if both specified
         """
 
-    @abstractmethod
+        if not ((match_columns is None) ^ (match_conditions_json is None)):
+            raise Exception(
+                "Must specify either match_columns OR match_conditions_json"
+            )
+        if not ((sql_query is None) ^ (source_table is None)):
+            raise Exception("Must specify either sql_query OR source_table")
+
+        for path_to_database in self.query_to_hyper_files(
+            sql_query=sql_query,
+            source_table=source_table,
+            hyper_table_name=changeset_table_name,
+        ):
+            self.update_datasource_from_hyper_file(
+                path_to_database=path_to_database,
+                tab_ds_name=tab_ds_name,
+                match_columns=match_columns,
+                match_conditions_json=match_conditions_json,
+                changeset_table_name=changeset_table_name,
+                action="UPDATE",
+            )
+            os.remove(path_to_database)
+
     def delete_from_datasource(
         self,
         tab_ds_name: str,
@@ -756,6 +900,42 @@ class BaseExtractor(ABC):
         - sql_query or source_table must only return columns referenced by the match condition
         - Specify either sql_query OR source_table, error if both specified
         - Set sql_query and source_table to None if conditional delete
-            (e.g. json_request="condition": { "op": "<", "target-col": "col1", "const": {"type": "datetime", "v": "2020-06-00"}})
+          e.g. json_request="condition":
+                { "op": "<", "target-col": "col1", "const": {"type": "datetime", "v": "2020-06-00"}})
         - Specify either match_columns OR match_conditions_json, error if both specified
         """
+        if not ((match_columns is None) ^ (match_conditions_json is None)):
+            raise Exception(
+                "Must specify either match_columns OR match_conditions_json"
+            )
+        if not ((sql_query is None) ^ (source_table is None)):
+            raise Exception("Must specify either sql_query OR source_table")
+
+        if (sql_query is None) and (source_table is None):
+            # Conditional delete
+            if match_conditions_json is None:
+                raise Exception(
+                    "Must specify match_conditions_json if sql_query and source_table are both None"
+                )
+            self.update_datasource_from_hyper_file(
+                path_to_database=None,
+                tab_ds_name=tab_ds_name,
+                match_columns=None,
+                match_conditions_json=match_conditions_json,
+                changeset_table_name=None,
+            )
+        else:
+            for path_to_database in self.query_to_hyper_files(
+                sql_query=sql_query,
+                source_table=source_table,
+                hyper_table_name=changeset_table_name,
+            ):
+                self.update_datasource_from_hyper_file(
+                    path_to_database=path_to_database,
+                    tab_ds_name=tab_ds_name,
+                    match_columns=match_columns,
+                    match_conditions_json=match_conditions_json,
+                    changeset_table_name=changeset_table_name,
+                    action="DELETE",
+                )
+                os.remove(path_to_database)
