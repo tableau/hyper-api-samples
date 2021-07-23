@@ -60,14 +60,14 @@ logger = logging.getLogger("hyper_samples.extractor.base")
 
 def log_execution_time(method):
     # Decorator used during debugging to time execution
-    def timed(*args, **kw):
+    def execution_timer(*args, **kw):
         ts = time.time()
         result = method(*args, **kw)
         te = time.time()
         logging.info("{0!r} completed in {1:2.4F} ms".format(
             method.__name__, (te - ts) * 1000))
         return result
-    return log_execution_time
+    return execution_timer
 
 
 TELEMETRY: Telemetry = Telemetry.SEND_USAGE_DATA_TO_TABLEAU
@@ -133,7 +133,7 @@ HYPER_CONNECTION_PARAMETERS: Dict[str, str] = {
         Accepted values: MDY, DMY, YMD, YDM
 """
 
-DBAPI_BATCHSIZE: int = 10000
+DBAPI_BATCHSIZE: int = 1000
 """
     DBAPI_BATCHSIZE (int): Window size for query execution via DBAPI Cursor
     Defines how many lines are fetched for each call to fetchmany().
@@ -727,6 +727,7 @@ class BaseExtractor(ABC):
         yield path_to_database
         return
 
+    @log_execution_time
     def load_sample(
         self,
         source_table: str,
@@ -761,6 +762,7 @@ class BaseExtractor(ABC):
                 )
             os.remove(path_to_database)
 
+    @log_execution_time
     def export_load(
         self,
         source_table: str,
@@ -789,6 +791,7 @@ class BaseExtractor(ABC):
                 )
             os.remove(path_to_database)
 
+    @log_execution_time
     def append_to_datasource(
         self,
         tab_ds_name: str,
@@ -825,6 +828,7 @@ class BaseExtractor(ABC):
             )
             os.remove(path_to_database)
 
+    @log_execution_time
     def update_datasource(
         self,
         tab_ds_name: str,
@@ -833,7 +837,7 @@ class BaseExtractor(ABC):
         match_columns: Union[List[str], None] = None,
         match_conditions_json: Optional[object] = None,
         changeset_table_name: str = "updated_rows",
-    ):
+    ) -> None:
         """
         Updates a datasource on Tableau Server with the changeset from sql_query
 
@@ -873,6 +877,7 @@ class BaseExtractor(ABC):
             )
             os.remove(path_to_database)
 
+    @log_execution_time
     def delete_from_datasource(
         self,
         tab_ds_name: str,
@@ -881,7 +886,7 @@ class BaseExtractor(ABC):
         match_columns: Union[List[str], None] = None,
         match_conditions_json: Optional[object] = None,
         changeset_table_name: str = "deleted_rowids",
-    ):
+    ) -> None:
         """
         Delete rows matching the changeset from sql_query from a datasource on Tableau Server
         Simple delete by condition when sql_query is None

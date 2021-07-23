@@ -24,11 +24,11 @@ from base_extractor import (
     HyperSQLTypeMappingError,
     DEFAULT_SITE_ID,
     tempfile_name,
-    log_execution_time,
 )
 from typing import Optional, Any, Generator
 
 from google.cloud import bigquery
+from google.cloud.bigquery import dbapi
 from google.cloud import storage
 
 logger = logging.getLogger("hyper_samples.extractor.bigquery")
@@ -106,8 +106,8 @@ class BigQueryExtractor(BaseExtractor):
         Returns a DBAPI Cursor to the source database
         """
         if self._bq_connection is None:
-            self._bq_connection = bigquery.dbapi.Connection(
-                bq_client, storage_client)
+            self._bq_connection = dbapi.Connection(
+                client=bq_client)
 
         return self._bq_connection.cursor()
 
@@ -167,7 +167,7 @@ class BigQueryExtractor(BaseExtractor):
         Returns a tableauhyperapi.TableDefinition Object
         """
         target_cols = []
-
+        logger.info("Determine target Hyper table definition...")
         if isinstance(source_table, bigquery.table.Table):
             for source_field in source_table.schema:
                 this_name = source_field.name
@@ -189,7 +189,7 @@ class BigQueryExtractor(BaseExtractor):
                     )
 
                 target_cols.append(this_col)
-                logger.debug(
+                logger.info(
                     "..Column {} - Type {}".format(this_name, this_type))
         else:
             for source_field in source_table:
@@ -202,6 +202,9 @@ class BigQueryExtractor(BaseExtractor):
                     this_col = TableDefinition.Column(
                         this_name, this_type, Nullability.NOT_NULLABLE
                     )
+                target_cols.append(this_col)
+                logger.info(
+                    "..Column {} - Type {}".format(this_name, this_type))
 
         target_schema = TableDefinition(
             table_name=TableName("Extract", hyper_table_name), columns=target_cols
@@ -226,7 +229,6 @@ class BigQueryExtractor(BaseExtractor):
             )
         return dryrun_bytes_estimate
 
-    @log_execution_time
     def query_to_hyper_files(
         self,
         sql_query: Optional[str] = None,
@@ -260,10 +262,12 @@ class BigQueryExtractor(BaseExtractor):
 
             if USE_DBAPI:
                 logging.info("Executing query using bigquery.dbapi.Cursor...")
-                path_to_database = super().query_to_hyper_files(
+                for path_to_database in super().query_to_hyper_files(
                     sql_query=sql_query,
                     hyper_table_name=hyper_table_name,
-                )
+                ):
+                    yield path_to_database
+                return
             else:
                 logging.info(
                     "Executing query using bigquery.table.RowIterator...")
@@ -279,9 +283,8 @@ class BigQueryExtractor(BaseExtractor):
                     target_table_def=target_table_def,
                     query_result_iter=query_result_iter,
                 )
-
-            yield path_to_database
-            return
+                yield path_to_database
+                return
         else:
             logging.info("Exporting Table:{}...".format(source_table))
             use_extract = True
