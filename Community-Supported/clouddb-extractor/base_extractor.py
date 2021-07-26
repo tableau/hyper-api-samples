@@ -765,8 +765,9 @@ class BaseExtractor(ABC):
     @log_execution_time
     def export_load(
         self,
-        source_table: str,
-        tab_ds_name: str,
+        tab_ds_name,
+        source_table: Optional[str] = None,
+        sql_query: Optional[str] = None,
         publish_mode: TSC.Server.PublishMode = TSC.Server.PublishMode.CreateNew,
     ) -> None:
         """
@@ -778,7 +779,7 @@ class BaseExtractor(ABC):
         """
 
         first_chunk = True
-        for path_to_database in self.query_to_hyper_files(source_table=source_table):
+        for path_to_database in self.query_to_hyper_files(source_table=source_table,sql_query=sql_query):
             if first_chunk:
                 self.publish_hyper_file(
                     path_to_database, tab_ds_name, publish_mode)

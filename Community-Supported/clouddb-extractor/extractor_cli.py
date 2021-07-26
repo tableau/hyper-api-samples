@@ -24,8 +24,10 @@ import json
 import yaml
 
 import bigquery_extractor
+import mysql_extractor
+import postgres_extractor
 
-EXTRACTORS = {"bigquery": bigquery_extractor.BigQueryExtractor}
+EXTRACTORS = {"bigquery": bigquery_extractor.BigQueryExtractor,"mySQL":mysql_extractor.MySQLQueryExtractor,"Postgres":postgres_extractor.PostgresQueryExtractor}
 DEFAULT_EXTRACTOR = "bigquery"
 SAMPLE_ROWS = 1000
 
@@ -33,10 +35,16 @@ SAMPLE_ROWS = 1000
 config = yaml.safe_load(open("config.yml"))
 tableau_env = config.get('tableau_env')
 cloud_env = config.get('cloud_env')
+db_env  = config.get('db_env')
 TABLEAU_PROJECT = tableau_env.get('project')
 TABLEAU_HOSTNAME = tableau_env.get('server_address')
 DEFAULT_SITE_ID = tableau_env.get('site_id')
 BUCKET_NAME = cloud_env.get('bucket_name')
+DB_HOST_NAME = db_env.get('db_host_name')
+DB_PORT = db_env.get('db_port')
+DB_MAIN_DATABASE = db_env.get('db_main_database')
+DB_USERNAME = db_env.get('db_username')
+DB_PASSWORD = db_env.get('db_password')
 
 class IllegalArgumentError(ValueError):
     pass
@@ -137,6 +145,31 @@ parser.add_argument(
     help="Bucket used for extract staging storage (default={})".format(BUCKET_NAME),
 )
 parser.add_argument(
+    "--db_host_name",
+    default=DB_HOST_NAME,
+    help="Hostname of the database to connect to (default={})".format(DB_HOST_NAME),
+)
+parser.add_argument(
+    "--db_port",
+    default=DB_PORT,
+    help="Port of the database to connect to (default={})".format(DB_PORT),
+)
+parser.add_argument(
+    "--db_main_database",
+    default=DB_MAIN_DATABASE,
+    help="Bucket of the database to connect to (default={})".format(DB_MAIN_DATABASE),
+)
+parser.add_argument(
+    "--db_username",
+    default=DB_USERNAME,
+    help="Bucket of the database to connect to (default={})".format(DB_USERNAME),
+)
+parser.add_argument(
+    "--db_password",
+    default=DB_PASSWORD,
+    help="Bucket of the database to connect to(default={})".format(DB_PASSWORD),
+)
+parser.add_argument(
     "--sample_rows",
     default=SAMPLE_ROWS,
     help="Defines the number of rows to use with LIMIT when command=load_sample (default={})".format(
@@ -208,6 +241,11 @@ if args.tableau_token_name:
         staging_bucket=BUCKET_NAME,
         tableau_token_name=args.tableau_token_name,
         tableau_token_secret=tableau_token_secret,
+        db_hostname=DB_HOST_NAME,
+        db_port=DB_PORT,
+        db_main_database=DB_MAIN_DATABASE,
+        db_username=DB_USERNAME,
+        db_password=DB_PASSWORD,
     )
 else:
     TABLEAU_USERNAME = args.tableau_username
@@ -219,16 +257,23 @@ else:
         staging_bucket=BUCKET_NAME,
         tableau_username=TABLEAU_USERNAME,
         tableau_password=TABLEAU_PASSWORD,
+        db_hostname=DB_HOST_NAME,
+        db_port=DB_PORT,
+        db_main_database=DB_MAIN_DATABASE,
+        db_username=DB_USERNAME,
+        DB_PASSWORD=DB_PASSWORD,
     )
 
 #
 # Implement TABLE level commands here
 #
 if selected_command in ("load_sample", "export_load"):
-    required_arg(
+    exclusive_args(
         args,
+        "sqlfile",
         "source_table_id",
-        "Must specify source_table_id when command is load_sample or export_load",
+        required=True,
+        message="Specify either sqlfile OR source_tableid",
     )
     if selected_command == "load_sample":
         extractor.load_sample(
@@ -237,8 +282,12 @@ if selected_command in ("load_sample", "export_load"):
             sample_rows=args.sample_rows,
         )
     if selected_command == "export_load":
+        sql_string = None
+        if args.sqlfile:
+            with open(args.sqlfile, "r") as myfile:
+                sql_string = myfile.read()
         extractor.export_load(
-            source_table=args.source_table_id, tab_ds_name=args.tableau_datasource,
+            source_table=args.source_table_id, tab_ds_name=args.tableau_datasource,sql_query=sql_string,
         )
 
 #

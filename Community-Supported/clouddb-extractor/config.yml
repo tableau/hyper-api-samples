@@ -1,7 +1,13 @@
 #Configuration file for extractor_cli.py
 tableau_env: #Tableau environment configuration defaults
-  project : "HyperAPITests" # The name of the project associated with the data source
-  server_address : "http://localhost/" # The address of target Tableau Server or Tableau Online
-  site_id : "" # This corresponds to the contentUrl attribute in the Tableau REST API.
+  project : "UpdateAPI" # The name of the project associated with the data source
+  server_address : "https://eu-west-1a.online.tableau.com" # The address of target Tableau Server or Tableau Online
+  site_id : "csilvasite" # This corresponds to the contentUrl attribute in the Tableau REST API.
 cloud_env: #Cloud environment configuration defaults
   bucket_name : "HyperAPITestStaging" # Cloud blob storage bucket for extract staging
+db_env: #DB environment configuration default
+  db_host_name : "mysql.test.tsi.lan"
+  db_port : "3306"
+  db_main_database : "TestV1"
+  db_username : "test"
+  db_password : "password"
