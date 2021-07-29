@@ -1,13 +1,30 @@
-#Configuration file for extractor_cli.py
+#Configuration file for clouddb_extractor utilities
+default_extractor : "bigquery"
+sample_rows : 1000 # How many rows to extract when using load_sample to preview a table
 tableau_env: #Tableau environment configuration defaults
-  project : "UpdateAPI" # The name of the project associated with the data source
-  server_address : "https://eu-west-1a.online.tableau.com" # The address of target Tableau Server or Tableau Online
-  site_id : "csilvasite" # This corresponds to the contentUrl attribute in the Tableau REST API.
-cloud_env: #Cloud environment configuration defaults
-  bucket_name : "HyperAPITestStaging" # Cloud blob storage bucket for extract staging
-db_env: #DB environment configuration default
-  db_host_name : "mysql.test.tsi.lan"
-  db_port : "3306"
-  db_main_database : "TestV1"
-  db_username : "test"
-  db_password : "password"
+  server_address : "https://eu-west-1a.online.tableau.com/" # The address of target Tableau Server or Tableau Online
+  site_id : "testsiteid" # This corresponds to the contentUrl attribute in the Tableau REST API.
+  project : "HyperAPITests" # The default Tableau project to store extract datasources
+bigquery: #BigQueryExtractor configuration defaults
+  staging_bucket : "HyperAPITestStaging" # Cloud blob storage bucket for extract staging if required
+postgres: #PostgreSQL configuration defaults
+  connection:
+    dbname : "dev"
+    username : "test"
+    password : "password"
+    host : "postgres.test"
+    port : 5432
+mysql: #Mysql configuration defaults
+  connection:
+    host : "mysql.test"
+    database : "dev"
+    port : 3306
+    username : "test"
+    password : "password"
+    raise_on_warnings : True
+redshift: #Redshift configuration defaults
+  connection:
+    host : 'redshift-cluster-1.XXX.eu-west-1.redshift.amazonaws.com'
+    database : 'dev'
+    user : 'test'
+    password : 'password'

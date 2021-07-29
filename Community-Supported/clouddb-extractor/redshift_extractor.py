@@ -1,4 +1,4 @@
-"""MySQL implementation of Base Hyper Extractor ABC
+"""AWS Redshift implementation of Base Hyper Extractor ABC
 
 Tableau Community supported Hyper API sample
 
@@ -14,23 +14,20 @@ as a template to start your own projects.
 -----------------------------------------------------------------------------
 """
 import logging
-from typing import Any, Optional
+import redshift_connector
+from tableauhyperapi import TableDefinition, SqlType, TableName
+from base_extractor import (
+    BaseExtractor,
+    HyperSQLTypeMappingError,
+    DEFAULT_SITE_ID,
+)
+from typing import Optional, Any
 
-import mysql.connector
-from mysql.connector import FieldType
-from tableauhyperapi import Nullability, SqlType, TableDefinition, TableName
-
-from base_extractor import DEFAULT_SITE_ID, BaseExtractor, HyperSQLTypeMappingError
-
-logger = logging.getLogger("hyper_samples.extractor.mySQL")
-
-
-class QuerySizeLimitError(Exception):
-    pass
+logger = logging.getLogger("hyper_samples.extractor.redshift")
 
 
-class MySQLExtractor(BaseExtractor):
-    """MySQL Implementation of Extractor Interface
+class RedshiftExtractor(BaseExtractor):
+    """AWS Redshift Implementation of Extractor Interface
 
     Authentication to Tableau Server can be either by Personal Access Token or
      Username and Password.
@@ -70,7 +67,7 @@ class MySQLExtractor(BaseExtractor):
             tableau_password=tableau_password,
         )
         self._source_database_connection = None
-        self.sql_identifier_quote = "`"
+        self.sql_identifier_quote = ""
 
     def source_database_cursor(self) -> Any:
         """
@@ -78,7 +75,7 @@ class MySQLExtractor(BaseExtractor):
         """
         if self._source_database_connection is None:
             db_connection_args = self.source_database_config.get("connection")
-            self._source_database_connection = mysql.connector.connect(**db_connection_args)
+            self._source_database_connection = redshift_connector.connect(**db_connection_args)
 
         return self._source_database_connection.cursor()
 
@@ -92,25 +89,22 @@ class MySQLExtractor(BaseExtractor):
         """
 
         type_lookup = {
-            "TINY": SqlType.bool(),
-            "SHORT": SqlType.bytes(),
-            "DATE": SqlType.date(),
-            "DATETIME": SqlType.timestamp(),
-            "INT24": SqlType.big_int(),
-            "LONGLONG": SqlType.big_int(),
-            "INTEGER": SqlType.int(),
-            "DECIMAL": SqlType.numeric(18, 9),
-            "DOUBLE": SqlType.double(),
-            "FLOAT": SqlType.double(),
-            "VAR_STRING": SqlType.text(),
-            "TIME": SqlType.time(),
-            "TIMESTAMP": SqlType.timestamp_tz(),
+            16: SqlType.bool(),
+            17: SqlType.bytes(),
+            1082: SqlType.date(),
+            1114: SqlType.timestamp(),
+            20: SqlType.big_int(),
+            21: SqlType.int(),
+            1700: SqlType.numeric(18, 9),
+            701: SqlType.double(),
+            1043: SqlType.text(),
+            1182: SqlType.time(),
+            1184: SqlType.timestamp_tz(),
         }
-        source_column_type = source_column
+        source_column_type = source_column[1]
         return_sql_type = type_lookup.get(source_column_type)
-
         if return_sql_type is None:
-            error_message = "No Hyper SqlType defined for MySQL source type: {}".format(source_column_type)
+            error_message = "No Hyper SqlType defined for Redshift source type: {}".format(source_column_type)
             logger.error(error_message)
             raise HyperSQLTypeMappingError(error_message)
 
@@ -119,29 +113,23 @@ class MySQLExtractor(BaseExtractor):
 
     def hyper_table_definition(self, source_table: Any, hyper_table_name: str = "Extract") -> TableDefinition:
         """
-        Build a hyper table definition from source_schema
+        Build a hyper table definition from source_table
 
-        source_table (obj): Source table (Instance of DBAPI Cursor Description)
+        source_table (obj): Source table or query result description
+          (Instance of google.cloud.bigquery.table.Table or dbapi.Cursor.description)
         hyper_table_name (string): Name of the target Hyper table, default="Extract"
 
         Returns a tableauhyperapi.TableDefinition Object
         """
-        # logger.debug(
-        #     "Building Hyper TableDefinition for table {}".format(source_table.dtypes)
-        # )
         target_cols = []
-
+        logger.info("Determine target Hyper table definition...")
         for source_field in source_table:
-            this_name = source_field[0]
-            this_type = self.hyper_sql_type(FieldType.get_info(source_field[1]))
-            if source_field[6]:
-                this_col = TableDefinition.Column(this_name, this_type, Nullability.NOT_NULLABLE)
-            else:
-                this_col = TableDefinition.Column(name=this_name, type=this_type)
+            this_name = str(source_field[0].decode())
+            this_type = self.hyper_sql_type(source_field)
+            this_col = TableDefinition.Column(name=this_name, type=this_type)
             target_cols.append(this_col)
             logger.info("..Column {} - Type {}".format(this_name, this_type))
 
-        # create the target schema for our Hyper File
         target_schema = TableDefinition(table_name=TableName("Extract", hyper_table_name), columns=target_cols)
         return target_schema
 

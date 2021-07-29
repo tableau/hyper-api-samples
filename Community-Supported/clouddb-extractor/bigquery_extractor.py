@@ -25,7 +25,7 @@ from base_extractor import (
     DEFAULT_SITE_ID,
     tempfile_name,
 )
-from typing import Optional, Any, Generator
+from typing import Optional, Any, Dict, Generator
 
 from google.cloud import bigquery
 from google.cloud.bigquery import dbapi
@@ -60,16 +60,16 @@ class QuerySizeLimitError(Exception):
 
 
 class BigQueryExtractor(BaseExtractor):
-    """ Google BigQuery Implementation of Extractor Interface
+    """Google BigQuery Implementation of Extractor Interface
 
     Authentication to Tableau Server can be either by Personal Access Token or
      Username and Password.
 
     Constructor Args:
+    - source_database_config (dict): Source database connection parameters
     - tableau_hostname (string): URL for Tableau Server, e.g. "http://localhost"
     - tableau_site_id (string): Tableau site identifier - if default use ""
     - tableau_project (string): Tableau project identifier
-    - staging_bucket (string): Cloud storage bucket used for db extracts
     - tableau_token_name (string): PAT name
     - tableau_token_secret (string): PAT secret
     - tableau_username (string): Tableau username
@@ -80,36 +80,37 @@ class BigQueryExtractor(BaseExtractor):
 
     def __init__(
         self,
+        source_database_config: Dict,
         tableau_hostname: str,
         tableau_project: str,
         tableau_site_id: str = DEFAULT_SITE_ID,
-        staging_bucket: Optional[str] = None,
         tableau_token_name: Optional[str] = None,
         tableau_token_secret: Optional[str] = None,
         tableau_username: Optional[str] = None,
         tableau_password: Optional[str] = None,
     ) -> None:
         super().__init__(
+            source_database_config=source_database_config,
             tableau_hostname=tableau_hostname,
             tableau_project=tableau_project,
             tableau_site_id=tableau_site_id,
-            staging_bucket=staging_bucket,
             tableau_token_name=tableau_token_name,
             tableau_token_secret=tableau_token_secret,
             tableau_username=tableau_username,
             tableau_password=tableau_password,
         )
-        self._bq_connection = None
+        self._source_database_connection = None
+        self.sql_identifier_quote = """`"""
+        self.staging_bucket = self.source_database_config.get("staging_bucket")
 
-    def new_source_cursor(self) -> Any:
+    def source_database_cursor(self) -> Any:
         """
         Returns a DBAPI Cursor to the source database
         """
-        if self._bq_connection is None:
-            self._bq_connection = dbapi.Connection(
-                client=bq_client)
+        if self._source_database_connection is None:
+            self._source_database_connection = dbapi.Connection(client=bq_client)
 
-        return self._bq_connection.cursor()
+        return self._source_database_connection.cursor()
 
     def hyper_sql_type(self, source_column: Any) -> SqlType:
         """
@@ -141,22 +142,14 @@ class BigQueryExtractor(BaseExtractor):
 
         return_sql_type = type_lookup.get(source_column_type)
         if return_sql_type is None:
-            error_message = "No Hyper SqlType defined for BigQuery source type: {}".format(
-                source_column_type
-            )
+            error_message = "No Hyper SqlType defined for BigQuery source type: {}".format(source_column_type)
             logger.error(error_message)
-            raise LookupError(error_message)
+            raise HyperSQLTypeMappingError(error_message)
 
-        logger.debug(
-            "Translated source column type {} to Hyper SqlType {}".format(
-                source_column_type, return_sql_type
-            )
-        )
+        logger.debug("Translated source column type {} to Hyper SqlType {}".format(source_column_type, return_sql_type))
         return return_sql_type
 
-    def hyper_table_definition(
-        self, source_table: Any, hyper_table_name: str = "Extract"
-    ) -> TableDefinition:
+    def hyper_table_definition(self, source_table: Any, hyper_table_name: str = "Extract") -> TableDefinition:
         """
         Build a hyper table definition from source_table
 
@@ -172,43 +165,29 @@ class BigQueryExtractor(BaseExtractor):
             for source_field in source_table.schema:
                 this_name = source_field.name
                 this_type = self.hyper_sql_type(source_field)
-                this_col = TableDefinition.Column(
-                    name=this_name, type=this_type)
+                this_col = TableDefinition.Column(name=this_name, type=this_type)
 
                 # Check for Nullability
                 this_mode = source_field.mode
                 if this_mode == "REPEATED":
-                    raise (
-                        HyperSQLTypeMappingError(
-                            "Field mode REPEATED is not implemented in Hyper"
-                        )
-                    )
+                    raise (HyperSQLTypeMappingError("Field mode REPEATED is not implemented in Hyper"))
                 if this_mode == "REQUIRED":
-                    this_col = TableDefinition.Column(
-                        this_name, this_type, Nullability.NOT_NULLABLE
-                    )
+                    this_col = TableDefinition.Column(this_name, this_type, Nullability.NOT_NULLABLE)
 
                 target_cols.append(this_col)
-                logger.info(
-                    "..Column {} - Type {}".format(this_name, this_type))
+                logger.info("..Column {} - Type {}".format(this_name, this_type))
         else:
             for source_field in source_table:
                 this_name = source_field.name
                 this_type = self.hyper_sql_type(source_field)
                 if source_field.null_ok:
-                    this_col = TableDefinition.Column(
-                        name=this_name, type=this_type)
+                    this_col = TableDefinition.Column(name=this_name, type=this_type)
                 else:
-                    this_col = TableDefinition.Column(
-                        this_name, this_type, Nullability.NOT_NULLABLE
-                    )
+                    this_col = TableDefinition.Column(this_name, this_type, Nullability.NOT_NULLABLE)
                 target_cols.append(this_col)
-                logger.info(
-                    "..Column {} - Type {}".format(this_name, this_type))
+                logger.info("..Column {} - Type {}".format(this_name, this_type))
 
-        target_schema = TableDefinition(
-            table_name=TableName("Extract", hyper_table_name), columns=target_cols
-        )
+        target_schema = TableDefinition(table_name=TableName("Extract", hyper_table_name), columns=target_cols)
         return target_schema
 
     def _estimate_query_bytes(self, sql_query: str) -> int:
@@ -216,17 +195,13 @@ class BigQueryExtractor(BaseExtractor):
         Dry run to estimate query result size
         """
         # Dry run to estimate result size
-        job_config = bigquery.QueryJobConfig(
-            dry_run=True, use_query_cache=False)
+        job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
         dryrun_query_job = bq_client.query(sql_query, job_config=job_config)
         dryrun_bytes_estimate = dryrun_query_job.total_bytes_processed
-        logger.info("This query will process {} bytes.".format(
-            dryrun_bytes_estimate))
+        logger.info("This query will process {} bytes.".format(dryrun_bytes_estimate))
 
         if dryrun_bytes_estimate > MAX_QUERY_SIZE:
-            raise QuerySizeLimitError(
-                "This query will return more than {MAX_QUERY_SIZE} bytes"
-            )
+            raise QuerySizeLimitError("This query will return more than {MAX_QUERY_SIZE} bytes")
         return dryrun_bytes_estimate
 
     def query_to_hyper_files(
@@ -269,14 +244,11 @@ class BigQueryExtractor(BaseExtractor):
                     yield path_to_database
                 return
             else:
-                logging.info(
-                    "Executing query using bigquery.table.RowIterator...")
+                logging.info("Executing query using bigquery.table.RowIterator...")
                 query_job = bq_client.query(sql_query)
 
                 # Determine table structure
-                target_table_def = self.hyper_table_definition(
-                    source_table=bq_client.get_table(query_job.destination), hyper_table_name=hyper_table_name
-                )
+                target_table_def = self.hyper_table_definition(source_table=bq_client.get_table(query_job.destination), hyper_table_name=hyper_table_name)
 
                 query_result_iter = bq_client.list_rows(query_job.destination)
                 path_to_database = self.query_result_to_hyper_file(
@@ -288,26 +260,14 @@ class BigQueryExtractor(BaseExtractor):
         else:
             logging.info("Exporting Table:{}...".format(source_table))
             use_extract = True
-            extract_prefix = "staging/{}_{}".format(
-                source_table, uuid.uuid4().hex)
-            extract_destination_uri = "gs://{}/{}-*.csv.gz".format(
-                self.staging_bucket, extract_prefix
-            )
+            extract_prefix = "staging/{}_{}".format(source_table, uuid.uuid4().hex)
+            extract_destination_uri = "gs://{}/{}-*.csv.gz".format(self.staging_bucket, extract_prefix)
             source_table_ref = bq_client.get_table(source_table)
-            target_table_def = self.hyper_table_definition(
-                source_table_ref, hyper_table_name
-            )
-            extract_job_config = bigquery.ExtractJobConfig(
-                compression="GZIP", destination_format="CSV", print_header=False
-            )
-            extract_job = bq_client.extract_table(
-                source_table, extract_destination_uri, job_config=extract_job_config
-            )
+            target_table_def = self.hyper_table_definition(source_table_ref, hyper_table_name)
+            extract_job_config = bigquery.ExtractJobConfig(compression="GZIP", destination_format="CSV", print_header=False)
+            extract_job = bq_client.extract_table(source_table, extract_destination_uri, job_config=extract_job_config)
             extract_job.result()  # Waits for job to complete.
-            logger.info(
-                "Exported {} to {}".format(
-                    source_table, extract_destination_uri)
-            )
+            logger.info("Exported {} to {}".format(source_table, extract_destination_uri))
 
         if use_extract:
             bucket = storage_client.bucket(self.staging_bucket)
@@ -352,9 +312,7 @@ class BigQueryExtractor(BaseExtractor):
                     yield path_to_database
 
             if pending_blobs:
-                path_to_database = self.csv_to_hyper_file(
-                    path_to_csv=batch_csv_filename, target_table_def=target_table_def
-                )
+                path_to_database = self.csv_to_hyper_file(path_to_csv=batch_csv_filename, target_table_def=target_table_def)
                 os.remove(Path(batch_csv_filename))
                 yield path_to_database
 
