@@ -934,6 +934,7 @@ class BaseExtractor(ABC):
                 match_columns=None,
                 match_conditions_json=match_conditions_json,
                 changeset_table_name=None,
+                action="DELETE",
             )
         else:
             if not ((sql_query is None) ^ (source_table is None)):
