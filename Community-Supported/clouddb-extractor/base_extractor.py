@@ -4,7 +4,7 @@ Tableau Community supported Hyper API sample
 
 This module provies an Abstract Base Class with some utility methods to extract
 from cloud databases to "live to hyper" Tableau Datasources.  This implements a
-basic set of query and table extract functions based on the Python DBAPI standard.
+basic set of query and table extract functions based on the Python DBAPIv2 standard.
 
 The simplest way to add an implementation for a specific database is to extend this
 with a database specific class that implements the following abstract methods:
@@ -35,6 +35,7 @@ as a template to start your own projects.
 
 from abc import ABC, abstractmethod
 import logging
+import functools
 from pathlib import Path
 import os
 import time
@@ -127,6 +128,11 @@ DBAPI_BATCHSIZE: int = 1000
     Defines how many lines are fetched for each call to fetchmany().
 """
 
+CONFIGURATION_FILE: str = "config.yml"
+"""
+    CONFIGURATION_FILE (str): Defines defaults for this utility
+"""
+
 
 class TableauJobError(Exception):
     """Exception: Tableau Job Failed"""
@@ -146,16 +152,40 @@ class HyperSQLTypeMappingError(Exception):
     pass
 
 
-def log_execution_time(method):
-    # Decorator used during debugging to time execution
+class ExtractorConfigurationError(Exception):
+    """Exception: config.yml is missing required section(s) or argument(s)"""
+
+
+def log_execution_time(func):
+    """Decorator used during debugging to time execution"""
+
     def execution_timer(*args, **kw):
         ts = time.time()
-        result = method(*args, **kw)
+        result = func(*args, **kw)
         te = time.time()
-        logging.info("{0!r} completed in {1:2.4F} ms".format(method.__name__, (te - ts) * 1000))
+        logging.info("{0!r} completed in {1:2.4F} ms".format(func.__name__, (te - ts) * 1000))
         return result
 
     return execution_timer
+
+
+def debug(func):
+    """Log the function arguments and return value"""
+
+    @functools.wraps(func)
+    def wrapper_debug(*args, **kwargs):
+        args_repr = [repr(a) for a in args]  # 1
+        kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]  # 2
+        signature = ", ".join(args_repr + kwargs_repr)  # 3
+        logger.debug(f"Calling {func.__name__}({signature})")
+
+        value = func(*args, **kwargs)
+
+        logger.debug(f"{func.__name__!r} returned {value!r}")  # 4
+
+        return value
+
+    return wrapper_debug
 
 
 def tempfile_name(prefix: str = "", suffix: str = "") -> str:
@@ -254,6 +284,16 @@ class BaseExtractor(ABC):
 
         Returns a tableauhyperapi.TableDefinition Object
         """
+
+    def required_config_args(self, config_dict, config_section: str, *keynames):
+        missing_keys = []
+        for keyname in keynames:
+            if config_dict.get(keyname) is None:
+                missing_keys.append(keyname)
+        if missing_keys:
+            raise ExtractorConfigurationError(
+                "Conifiguration File:{}, Section:{} - Missing required element(s):{}".format(CONFIGURATION_FILE, config_section, missing_keys.join(","))
+            )
 
     def _datasource_lock(self, tab_ds_name: str) -> FileLock:
         """
@@ -471,7 +511,7 @@ class BaseExtractor(ABC):
             for match_pair in match_columns:
                 match_conditions_args.append(
                     {
-                        "op": "=",
+                        "op": "eq",
                         "source-col": match_pair[0],
                         "target-col": match_pair[1],
                     }
@@ -883,8 +923,6 @@ class BaseExtractor(ABC):
         """
         if not ((match_columns is None) ^ (match_conditions_json is None)):
             raise Exception("Must specify either match_columns OR match_conditions_json")
-        if not ((sql_query is None) ^ (source_table is None)):
-            raise Exception("Must specify either sql_query OR source_table")
 
         if (sql_query is None) and (source_table is None):
             # Conditional delete
@@ -898,6 +936,8 @@ class BaseExtractor(ABC):
                 changeset_table_name=None,
             )
         else:
+            if not ((sql_query is None) ^ (source_table is None)):
+                raise Exception("Must specify either sql_query OR source_table")
             for path_to_database in self.query_to_hyper_files(
                 sql_query=sql_query,
                 source_table=source_table,
@@ -911,5 +951,4 @@ class BaseExtractor(ABC):
                     changeset_table_name=changeset_table_name,
                     action="DELETE",
                 )
-                os.remove(path_to_database)
                 os.remove(path_to_database)

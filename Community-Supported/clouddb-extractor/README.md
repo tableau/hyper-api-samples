@@ -11,18 +11,19 @@ Cloud Database Extractor Utility - This sample shows how to extract data from a 
 This package defines a standard Extractor Interface which is extended by specific implementations
 to support specific cloud databases.  For most use cases you will probably only ever call the
 following methods:
-* __load_sample__ - Loads a sample of rows from source_table to Tableau Server
-* __export_load__ - Bulk export the contents of source_table and load to a Tableau Server
-* __append_to_datasource__ - Appends the result of sql_query to a datasource on Tableau Server
-* __update_datasource__ - Updates a datasource on Tableau Server with the changeset from sql_query
-* __delete_from_datasource__ - Delete rows matching the changeset from a datasource on Tableau Server.  Simple delete by condition when sql_query is None
+* __load_sample__ - Used during testing - extract a sample of rows from the source table to a new published datasource
+* __export_load__ - Used for initial load - full extract of source table to a new published datasource
+* __append_to_datasource__ - Append rows from a query or table to an existing published datasource
+* __update_datasource__ - Updates an existing published datasource with the changeset from a query or table
+* __delete_from_datasource__ - Delete rows from a published datasource that match a condition and/or that match the primary keys in the changeset from a query or table
 
 For a full list of methods and args see the docstrings in the BaseExtractor class.
 
 ## Contents
-* __base_extractor.py__ - provides an Abstract Base Class with some utility methods to extract from cloud databases to "live to hyper" Tableau Datasources. Database specific Extractor classes extend this to manage queries, exports and schema discovery via the database vendor supplied client libraries.
+* __base_extractor.py__ - provides an Abstract Base Class with some utility methods to extract from cloud databases to "live to hyper" Tableau Datasources. Database specific Extractor classes extend this to manage connections and schema discovery
+and may override the generic query processing methods based on DBAPIv2 standards with database specific optimizations.
 * __bigquery_extractor.py__ - Google BigQuery implementation of Base Hyper Extractor ABC
-* __config.yml__ - Defines site defaults for extractor_cli utility
+* __config.yml__ - Defines site defaults for extractor utility
 * __extractor_cli.py__ - Simple CLI Wrapper around Extractor Classes
 * __mysql_extractor.py__ - MySQL implementation of Base Hyper Extractor ABC
 * __postgres_extractor.py__ - PostgreSQL implementation of Base Hyper Extractor ABC

@@ -76,12 +76,38 @@ def required_arg(args, arg_name, message=None):
             raise IllegalArgumentError(message)
 
 
+def add_arg_with_default(parser, config, default_config_key, help, required, *args, **kwargs):
+    default_value = None
+    if default_config_key is not None:
+        # May have to walk the tree in YAML file
+        config_tree = default_config_key.split(".")
+        this_config = config
+        levels = len(config_tree)
+        this_level = 1
+        for config_level in config_tree:
+            try:
+                this_value = this_config.get(config_level)
+            except AttributeError:
+                this_value = None
+
+            if this_value is None:
+                break
+            if this_level == levels:
+                default_value = this_value
+            else:
+                this_config = this_value
+                this_level += 1
+
+    if default_value is None:
+        parser.add_argument(*args, help=help, required=required, **kwargs)
+    else:
+        help = help + f" (default={default_value})"
+        parser.add_argument(*args, default=default_value, help=help, **kwargs)
+
+
 def main():
     # Load defaults
     config = yaml.safe_load(open("config.yml"))
-    default_extractor = config.get("default_extractor")
-    tableau_env = config.get("tableau_env")
-    db_env = config.get(default_extractor)
 
     # Define Command Line Args
     parser = argparse.ArgumentParser(
@@ -97,44 +123,21 @@ def main():
         choices=["load_sample", "export_load", "append", "update", "delete"],
         help="Select the utility function to call",
     )
-    parser.add_argument(
+    add_arg_with_default(
+        parser,
+        config,
+        "default_extractor",
+        "Select the extractor implementation that matches your database",
+        True,
         "--extractor",
         choices=EXTRACTORS.keys(),
-        default=default_extractor,
-        help=f"Select the extractor implementation that matches your cloud database (default={default_extractor})",
     )
     parser.add_argument(
         "--source_table_id",
         help="Fully qualified table identifier from source database",
     )
-    parser.add_argument(
-        "--tableau_project",
-        "-P",
-        default=tableau_env.get("project"),
-        help="Target project name (default={})".format(tableau_env.get("project")),
-    )
-    parser.add_argument(
-        "--tableau_datasource",
-        required=True,
-        help="Target datasource name",
-    )
-    parser.add_argument(
-        "--tableau_hostname",
-        "-H",
-        default=tableau_env.get("server_address"),
-        help="Tableau connection string (default={})".format(tableau_env.get("server_address")),
-    )
-    parser.add_argument(
-        "--tableau_site_id",
-        "-S",
-        default=tableau_env.get("site_id"),
-        help="Tableau site id (default={})".format(tableau_env.get("site_id")),
-    )
-    parser.add_argument(
-        "--sample_rows",
-        default=config.get("sample_rows"),
-        help="Defines the number of rows to use with LIMIT when command=load_sample(default={})".format(config.get("sample_rows")),
-    )
+    add_arg_with_default(parser, config, "sample_rows", "Defines the number of rows to use with LIMIT when command=load_sample", False, "--sample_rows")
+
     parser.add_argument(
         "--sql",
         help="The query string used to generate the changeset when command=[append|update|merge]",
@@ -155,19 +158,15 @@ def main():
         "--match_conditions_json",
         help="Define conditions for matching rows in json format when command=[update|delete]." "See Hyper API guide for details. ",
     )
-    parser.add_argument(
-        "--tableau_username",
-        "-U",
-        help="Tableau user name",
-    )
-    parser.add_argument(
-        "--tableau_token_name",
-        help="Personal access token name",
-    )
-    parser.add_argument(
-        "--tableau_token_secretfile",
-        help="File containing personal access token secret",
-    )
+
+    # Tableau Server / Tableau Online options
+    add_arg_with_default(parser, config, "tableau_env.server_address", "Tableau connection string", True, "--tableau_hostname", "-H")
+    add_arg_with_default(parser, config, "tableau_env.site_id", "Tableau site id", True, "--tableau_site_id", "-S")
+    add_arg_with_default(parser, config, "tableau_env.project", "Target project name", True, "--tableau_project", "-P")
+    add_arg_with_default(parser, config, "tableau_env.datasource", "Target datasource name", True, "--tableau_datasource")
+    add_arg_with_default(parser, config, "tableau_env.username", "Tableau user name", False, "--tableau_username", "-U")
+    add_arg_with_default(parser, config, "tableau_env.token_name", "Personal access token name", False, "--tableau_token_name")
+    add_arg_with_default(parser, config, "tableau_env.token_secretfile", "File containing personal access token secret", False, "--tableau_token_secretfile")
 
     # Parse Args
     args = parser.parse_args()
@@ -197,6 +196,7 @@ def main():
     if args.sqlfile:
         with open(args.sqlfile, "r") as myfile:
             sql_string = myfile.read()
+        logging.info(f"SQL={sql_string}")
 
     # Initialize Extractor Implementation
     # These are loaded on demand so that you don't have to install
@@ -238,6 +238,11 @@ def main():
         )
 
     if selected_command == "load_sample":
+        required_arg(
+            args,
+            "sample_rows",
+            "Must specify sample_rows when action is load_sample",
+        )
         extractor.load_sample(
             sql_query=sql_string,
             source_table=args.source_table_id,
