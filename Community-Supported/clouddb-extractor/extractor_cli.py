@@ -43,6 +43,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s %(funcName)s - %(levelname)s - %(message)s",
     handlers=[logging.FileHandler("debug.log"), consoleHandler],
 )
+logger = logging.getLogger("extractor_cli")
 
 
 class IllegalArgumentError(ValueError):
@@ -156,7 +157,7 @@ def main():
     )
     parser.add_argument(
         "--match_conditions_json",
-        help="Define conditions for matching rows in json format when command=[update|delete]." "See Hyper API guide for details. ",
+        help="Json file defining conditions for matching rows when command=[update|delete].",
     )
 
     # Tableau Server / Tableau Online options
@@ -196,7 +197,7 @@ def main():
     if args.sqlfile:
         with open(args.sqlfile, "r") as myfile:
             sql_string = myfile.read()
-        logging.info(f"SQL={sql_string}")
+        logger.info(f"SQL={sql_string}")
 
     # Initialize Extractor Implementation
     # These are loaded on demand so that you don't have to install
@@ -272,9 +273,15 @@ def main():
             required=True,
             message="Must specify either match_columns OR match_conditions_json when command is update or delete",
         )
+        # Load match_conditions_json from file
         match_conditions_json = None
         if args.match_conditions_json:
-            match_conditions_json = json.loads(args.match_conditions_json)
+            json_file = args.match_conditions_json
+            logger.info("Parsing json file: {}".format(json_file))
+            with open(json_file, "r") as myfile:
+                match_conditions_json = json.load(myfile)
+            logger.info("condition={}".format(json.dumps(match_conditions_json)))
+
         if selected_command == "update":
             extractor.update_datasource(
                 sql_query=sql_string,

@@ -220,21 +220,24 @@ def patch_datasource(server, auth_token, site_id, datasource_id, file_upload_id,
     # Generate request id using standard UUID module
     request_id = uuid.uuid4()
 
-    patch_url = server + "/api/{0}/sites/{1}/datasources/{2}".format(VERSION, site_id, datasource_id)
-    patch_url += "/data"
+    patch_url = server + "/api/{0}/sites/{1}/datasources/{2}/data".format(VERSION, site_id, datasource_id)
     if file_upload_id is not None:
         patch_url += "?uploadSessionId={0}".format(url_encode(file_upload_id))
 
     logger.info("Updating datasource {} on Tableau Server {}:{}".format(datasource_id, server, patch_url))
+
+    patch_headers = {
+        "x-tableau-auth": auth_token,
+        "RequestID": str(request_id),
+        "Content-Type": "application/json",
+        "Accept": "application/xml",
+    }
+    patch_data = json.dumps(request_json)
+    logger.info(f"PATCH request DATA={patch_data}")
     server_response = requests.patch(
         patch_url,
-        data=json.dumps(request_json),
-        headers={
-            "x-tableau-auth": auth_token,
-            "RequestID": str(request_id),
-            "Content-Type": "application/json",
-            "Accept": "application/xml",
-        },
+        data=patch_data,
+        headers=patch_headers,
     )
 
     check_status(server_response, 202)

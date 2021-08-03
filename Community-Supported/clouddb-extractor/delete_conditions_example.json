@@ -1,0 +1,5 @@
+{
+        "op": "lt",
+        "target-col": "ORDER_DATE",
+        "const": {"type": "datetime", "v": "2018-02-01T00:00:00Z"}
+}
