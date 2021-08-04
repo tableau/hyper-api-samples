@@ -112,17 +112,26 @@ def main():
 
     # Define Command Line Args
     parser = argparse.ArgumentParser(
-        description="""Utilities to build Hyper Extracts from Cloud Databases
-        - load_sample: Load sample rows of data to new Tableau datasource
-        - export_load: Bulk export and load to new Tableau datasource
-        - append: Append the results of a query to an existing Tableau datasource
-        - update: Update an existing Tableau datasource with the changeset from a query
-        - delete: Delete rows from a Tableau datasource that match key columns in a changeset from a query""",
+        prog="python3 extractor_cli.py",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""
+Utilities to synchronize cloud databases to published Hyper extracts
+
+Functions:
+- load_sample: Extract a sample subset of rows from the source table to a new
+  published datasource
+- export_load: Full extract of source table to a new published datasource
+- append: Append rows from a query or table to an existing published datasource
+- update: Updates an existing published datasource with the changeset from a
+  query or table
+- delete: Delete rows from a published datasource that match a condition and/or
+  that match the primary keys in the changeset from a query or table
+        """,
     )
     parser.add_argument(
         "command",
         choices=["load_sample", "export_load", "append", "update", "delete"],
-        help="Select the utility function to call",
+        help="Select the function to call",
     )
     add_arg_with_default(
         parser,

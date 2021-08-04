@@ -122,7 +122,7 @@ HYPER_CONNECTION_PARAMETERS: Dict[str, str] = {"lc_time": "en_GB", "date_style":
         Accepted values: MDY, DMY, YMD, YDM
 """
 
-DBAPI_BATCHSIZE: int = 1000
+DBAPI_BATCHSIZE: int = 10000
 """
     DBAPI_BATCHSIZE (int): Window size for query execution via DBAPI Cursor
     Defines how many lines are fetched for each call to fetchmany().
@@ -364,23 +364,40 @@ class BaseExtractor(ABC):
 
     def query_result_to_hyper_file(
         self,
-        target_table_def: TableDefinition,
+        target_table_def: Optional[TableDefinition] = None,
         cursor: Any = None,
         query_result_iter: Iterable[Iterable[object]] = None,
+        hyper_table_name: str = "Extract",
     ) -> Path:
         """
         Writes query output to a Hyper file
         Returns Path to hyper file
 
         target_table_def (TableDefinition): Schema for target extract table
+          (Required if using query_result_iter)
         cursor : A Python DBAPI v2 compliant Cursor object
         query_result_iter : Iterator containing result rows
+        hyper_table_name (string): Name of the target Hyper table, default=Extract
+          (Only used if target_table_def is None)
 
         Must specify either cursor or query_result_iter, Error if both are specified
         """
+        rows = None
 
         if not (bool(cursor) ^ bool(query_result_iter)):
             raise Exception("Must specify either cursor OR query_result_iter")
+
+        if target_table_def is None:
+            if cursor is None:
+                raise Exception("Must specify target_table_def when using query_result_iter")
+            else:
+                # If using a server side cursor then description may be None until first call
+                if cursor.description is None:
+                    rows = cursor.fetchmany(self.dbapi_batchsize)
+
+                if cursor.description is None:
+                    raise Exception("DBAPI Cursor did not return any schema description for query:{}".format(cursor.query))
+                target_table_def = self.hyper_table_definition(source_table=cursor.description, hyper_table_name=hyper_table_name)
 
         path_to_database = Path(tempfile_name(prefix="temp_", suffix=".hyper"))
 
@@ -393,7 +410,6 @@ class BaseExtractor(ABC):
                 database=path_to_database,
                 create_mode=CreateMode.CREATE_AND_REPLACE,
             ) as connection:
-
                 connection.catalog.create_schema(schema=target_table_def.table_name.schema_name)
                 connection.catalog.create_table(table_definition=target_table_def)
                 with Inserter(connection, target_table_def) as inserter:
@@ -401,6 +417,9 @@ class BaseExtractor(ABC):
                         inserter.add_rows(query_result_iter)
                         inserter.execute()
                     else:
+                        if rows:
+                            # We have rows in the buffer from where we determined the cursor.description for server side cursor
+                            inserter.add_rows(rows)
                         while True:
                             rows = cursor.fetchmany(self.dbapi_batchsize)
                             if rows:
@@ -719,12 +738,11 @@ class BaseExtractor(ABC):
             raise Exception("Must specify either sql_query OR source_table")
 
         if source_table:
-            sql_query = "SELECT * from {0}{1}{2}".format(self.identifier_quote, source_table, self.identifier_quote)
+            sql_query = "SELECT * from {0}{1}{2}".format(self.sql_identifier_quote, source_table, self.sql_identifier_quote)
 
         cursor = self.source_database_cursor()
         cursor.execute(sql_query)
-        target_table_def = self.hyper_table_definition(source_table=cursor.description, hyper_table_name=hyper_table_name)
-        path_to_database = self.query_result_to_hyper_file(target_table_def=target_table_def, cursor=cursor)
+        path_to_database = self.query_result_to_hyper_file(cursor=cursor, hyper_table_name=hyper_table_name)
         yield path_to_database
         return
 

@@ -76,16 +76,14 @@ class PostgresExtractor(BaseExtractor):
             db_connection_args = self.source_database_config.get("connection")
             self._source_database_connection = psycopg2.connect(**db_connection_args)
 
-        # Use Server Side Cursor:
-        # If the dataset is too large to be practically handled on the client side,
-        # it is possible to create a server side cursor. Using this kind of cursor
-        # it is possible to transfer to the client only a controlled amount of data,
-        # so that a large dataset can be examined without keeping it entirely in memory.
+        # Use Server Side Cursor so that dataset can be examined without keeping it entirely in memory.
         # Psycopg wraps the database server side cursor in named cursors.
         # A named cursor is created using the cursor() method specifying the name parameter.
         named_server_side_cursor = self._source_database_connection.cursor(name=uuid.uuid4().hex)
-
         return named_server_side_cursor
+
+        # client_cursor = self._source_database_connection.cursor()
+        # return client_cursor
 
     def hyper_sql_type(self, source_column: Any) -> SqlType:
         """

@@ -10,7 +10,7 @@ bigquery: #BigQueryExtractor configuration defaults
 postgres: #PostgreSQL configuration defaults
   connection:
     dbname : "dev"
-    username : "test"
+    user : "test"
     password : "password"
     host : "postgres.test"
     port : 5432
