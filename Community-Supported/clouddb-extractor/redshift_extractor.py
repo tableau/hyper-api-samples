@@ -75,6 +75,7 @@ class RedshiftExtractor(BaseExtractor):
         """
         if self._source_database_connection is None:
             db_connection_args = self.source_database_config.get("connection")
+            logger.info("Connecting to source Redshift Instance...")
             self._source_database_connection = redshift_connector.connect(**db_connection_args)
 
         return self._source_database_connection.cursor()
@@ -113,10 +114,9 @@ class RedshiftExtractor(BaseExtractor):
 
     def hyper_table_definition(self, source_table: Any, hyper_table_name: str = "Extract") -> TableDefinition:
         """
-        Build a hyper table definition from source_table
+        Build a hyper table definition from source_schema
 
-        source_table (obj): Source table or query result description
-          (Instance of google.cloud.bigquery.table.Table or dbapi.Cursor.description)
+        source_table (obj): Source table (Instance of DBAPI Cursor Description)
         hyper_table_name (string): Name of the target Hyper table, default="Extract"
 
         Returns a tableauhyperapi.TableDefinition Object

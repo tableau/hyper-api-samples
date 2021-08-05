@@ -78,6 +78,7 @@ class MySQLExtractor(BaseExtractor):
         """
         if self._source_database_connection is None:
             db_connection_args = self.source_database_config.get("connection")
+            logger.info("Connecting to source MySQL Instance...")
             self._source_database_connection = mysql.connector.connect(**db_connection_args)
 
         return self._source_database_connection.cursor()

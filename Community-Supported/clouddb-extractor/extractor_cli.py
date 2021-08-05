@@ -106,6 +106,20 @@ def add_arg_with_default(parser, config, default_config_key, help, required, *ar
         parser.add_argument(*args, default=default_value, help=help, **kwargs)
 
 
+def get_int_from_arg(this_str, arg_name, is_required=False):
+    if this_str is None:
+        if is_required:
+            raise IllegalArgumentError("Missing required argument:{}".format(arg_name))
+        else:
+            return 0
+
+    try:
+        this_int = int(this_str)
+        return this_int
+    except ValueError:
+        raise IllegalArgumentError("Invalid value provided for {}, expected int, received {}".format(arg_name, this_str))
+
+
 def main():
     # Load defaults
     config = yaml.safe_load(open("config.yml"))
@@ -257,7 +271,7 @@ Functions:
             sql_query=sql_string,
             source_table=args.source_table_id,
             tab_ds_name=args.tableau_datasource,
-            sample_rows=args.sample_rows,
+            sample_rows=get_int_from_arg(args.sample_rows, "sample_rows", True),
         )
 
     if selected_command == "export_load":

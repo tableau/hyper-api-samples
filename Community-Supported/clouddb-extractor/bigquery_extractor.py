@@ -108,6 +108,7 @@ class BigQueryExtractor(BaseExtractor):
         Returns a DBAPI Cursor to the source database
         """
         if self._source_database_connection is None:
+            logger.info("Connecting to source BigQuery Instance...")
             self._source_database_connection = dbapi.Connection(client=bq_client)
 
         return self._source_database_connection.cursor()
@@ -245,6 +246,7 @@ class BigQueryExtractor(BaseExtractor):
                 return
             else:
                 logging.info("Executing query using bigquery.table.RowIterator...")
+                logging.info(f"Executing SQL={sql_query}")
                 query_job = bq_client.query(sql_query)
 
                 # Determine table structure

@@ -74,6 +74,7 @@ class PostgresExtractor(BaseExtractor):
         """
         if self._source_database_connection is None:
             db_connection_args = self.source_database_config.get("connection")
+            logger.info("Connecting to source PostgreSQL Instance...")
             self._source_database_connection = psycopg2.connect(**db_connection_args)
 
         # Use Server Side Cursor so that dataset can be examined without keeping it entirely in memory.
@@ -81,9 +82,6 @@ class PostgresExtractor(BaseExtractor):
         # A named cursor is created using the cursor() method specifying the name parameter.
         named_server_side_cursor = self._source_database_connection.cursor(name=uuid.uuid4().hex)
         return named_server_side_cursor
-
-        # client_cursor = self._source_database_connection.cursor()
-        # return client_cursor
 
     def hyper_sql_type(self, source_column: Any) -> SqlType:
         """

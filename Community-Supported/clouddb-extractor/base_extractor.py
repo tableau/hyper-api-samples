@@ -42,6 +42,7 @@ import time
 import uuid
 from filelock import FileLock
 from typing import Dict, Optional, Any, Union, List, Iterable, Generator
+import re
 
 import tableauserverclient as TSC
 import tableau_restapi_helpers as REST
@@ -258,6 +259,33 @@ class BaseExtractor(ABC):
     def sql_identifier_quote(self, new_char):
         self.__sql_identifier_quote = new_char
 
+    def quoted_sql_identifier(self, sql_identifier: str) -> str:
+        """
+        Parse a SQL Identifier (e.g. Table Name, Column Name) and returns
+        escaped and quoted version ()
+
+        Replace this with your database connector mechanism if one is defined
+        """
+
+        sql_identifier = sql_identifier.strip()
+
+        if sql_identifier is None:
+            raise Exception("Expected SQL identifier (e.g. Table Name, Column Name) found None")
+
+        maxlength = 64
+        if len(sql_identifier) > maxlength:
+            raise Exception("Invalid SQL identifier: {} - exceeded max allowed length: {}".format(sql_identifier, maxlength))
+
+        # char_whitelist = re.compile("^[A-Za-z0-9_-.]*$")
+        char_whitelist = re.compile("\A[\w\.\-]*\Z")
+        if char_whitelist.match(sql_identifier) is None:
+            raise Exception("Invalid SQL identifier: {} - found invalid characters".format(sql_identifier))
+
+        sql_identifier_parts = sql_identifier.split(".")
+        join_str = "{}.{}".format(self.sql_identifier_quote, self.sql_identifier_quote)
+
+        return "{}{}{}".format(self.sql_identifier_quote, join_str.join(sql_identifier_parts), self.sql_identifier_quote)
+
     @abstractmethod
     def source_database_cursor(self) -> Any:
         """
@@ -284,16 +312,6 @@ class BaseExtractor(ABC):
 
         Returns a tableauhyperapi.TableDefinition Object
         """
-
-    def required_config_args(self, config_dict, config_section: str, *keynames):
-        missing_keys = []
-        for keyname in keynames:
-            if config_dict.get(keyname) is None:
-                missing_keys.append(keyname)
-        if missing_keys:
-            raise ExtractorConfigurationError(
-                "Conifiguration File:{}, Section:{} - Missing required element(s):{}".format(CONFIGURATION_FILE, config_section, missing_keys.join(","))
-            )
 
     def _datasource_lock(self, tab_ds_name: str) -> FileLock:
         """
@@ -738,9 +756,10 @@ class BaseExtractor(ABC):
             raise Exception("Must specify either sql_query OR source_table")
 
         if source_table:
-            sql_query = "SELECT * from {0}{1}{2}".format(self.sql_identifier_quote, source_table, self.sql_identifier_quote)
+            sql_query = "SELECT * from {}".format(self.quoted_sql_identifier(source_table))
 
         cursor = self.source_database_cursor()
+        logger.info(f"Execute SQL:{sql_query}")
         cursor.execute(sql_query)
         path_to_database = self.query_result_to_hyper_file(cursor=cursor, hyper_table_name=hyper_table_name)
         yield path_to_database
@@ -776,7 +795,7 @@ class BaseExtractor(ABC):
         if sql_query:
             sql_query = "{} LIMIT {}".format(sql_query, sample_rows)
         else:
-            sql_query = "SELECT * FROM {0}{1}{2} LIMIT {3}".format(self.sql_identifier_quote, source_table, self.sql_identifier_quote, sample_rows)
+            sql_query = "SELECT * FROM {} LIMIT {}".format(self.quoted_sql_identifier(source_table), sample_rows)
         first_chunk = True
         for path_to_database in self.query_to_hyper_files(sql_query=sql_query):
             if first_chunk:
