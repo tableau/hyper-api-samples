@@ -15,31 +15,37 @@ as a template to start your own projects.
 """
 import logging
 import subprocess
-import os
 import uuid
 from pathlib import Path
-import tableauserverclient as TSC
+import os
 from tableauhyperapi import TableDefinition, Nullability, SqlType, TableName
 from base_extractor import (
     BaseExtractor,
     HyperSQLTypeMappingError,
     DEFAULT_SITE_ID,
     tempfile_name,
-    SAMPLE_ROWS,
 )
-from typing import Dict, Optional, Any, Union, List, Generator
+from typing import Optional, Any, Dict, Generator
 
 from google.cloud import bigquery
+from google.cloud.bigquery import dbapi
 from google.cloud import storage
 
 logger = logging.getLogger("hyper_samples.extractor.bigquery")
 
 bq_client = bigquery.Client()
+storage_client = storage.Client()
 
 MAX_QUERY_SIZE: int = 1024 * 1024 * 1024  # 1GB
 """
     MAX_QUERY_SIZE (int): Abort job if query returns more than specified number of bytes.
       Note: this is not enforced if extracting from a Table, only for SQL Query
+"""
+
+USE_DBAPI: bool = False
+"""
+    USE_DBAPI (bool): Controls if queries are executed via DBAPI Cursor (True) or
+    the bigquery client native query methods.
 """
 
 BLOBS_PER_HYPER_FILE: int = 5
@@ -54,16 +60,16 @@ class QuerySizeLimitError(Exception):
 
 
 class BigQueryExtractor(BaseExtractor):
-    """ Google BigQuery Implementation of Extractor Interface
+    """Google BigQuery Implementation of Extractor Interface
 
     Authentication to Tableau Server can be either by Personal Access Token or
      Username and Password.
 
     Constructor Args:
+    - source_database_config (dict): Source database connection parameters
     - tableau_hostname (string): URL for Tableau Server, e.g. "http://localhost"
     - tableau_site_id (string): Tableau site identifier - if default use ""
     - tableau_project (string): Tableau project identifier
-    - staging_bucket (string): Cloud storage bucket used for db extracts
     - tableau_token_name (string): PAT name
     - tableau_token_secret (string): PAT secret
     - tableau_username (string): Tableau username
@@ -74,37 +80,49 @@ class BigQueryExtractor(BaseExtractor):
 
     def __init__(
         self,
+        source_database_config: Dict,
         tableau_hostname: str,
         tableau_project: str,
         tableau_site_id: str = DEFAULT_SITE_ID,
-        staging_bucket: Optional[str] = None,
         tableau_token_name: Optional[str] = None,
         tableau_token_secret: Optional[str] = None,
         tableau_username: Optional[str] = None,
         tableau_password: Optional[str] = None,
     ) -> None:
         super().__init__(
+            source_database_config=source_database_config,
             tableau_hostname=tableau_hostname,
             tableau_project=tableau_project,
             tableau_site_id=tableau_site_id,
-            staging_bucket=staging_bucket,
             tableau_token_name=tableau_token_name,
             tableau_token_secret=tableau_token_secret,
             tableau_username=tableau_username,
             tableau_password=tableau_password,
         )
+        self._source_database_connection = None
+        self.sql_identifier_quote = """`"""
+        self.staging_bucket = self.source_database_config.get("staging_bucket")
+
+    def source_database_cursor(self) -> Any:
+        """
+        Returns a DBAPI Cursor to the source database
+        """
+        if self._source_database_connection is None:
+            logger.info("Connecting to source BigQuery Instance...")
+            self._source_database_connection = dbapi.Connection(client=bq_client)
+
+        return self._source_database_connection.cursor()
 
     def hyper_sql_type(self, source_column: Any) -> SqlType:
         """
-        Finds the correct Hyper column type for source_column
+        Finds the corresponding Hyper column type for source_column
 
-        source_column (obj): Source column (Instance of google.cloud.bigquery.schema.SchemaField)
+        source_column (obj): Instance of google.cloud.bigquery.schema.SchemaField or DBAPI Column description tuple
 
         Returns a tableauhyperapi.SqlType Object
         """
 
-        source_column_type = source_column.field_type
-        return_sql_type = {
+        type_lookup = {
             "BOOL": SqlType.bool(),
             "BYTES": SqlType.bytes(),
             "DATE": SqlType.date(),
@@ -116,63 +134,61 @@ class BigQueryExtractor(BaseExtractor):
             "STRING": SqlType.text(),
             "TIME": SqlType.time(),
             "TIMESTAMP": SqlType.timestamp_tz(),
-        }.get(source_column_type)
+        }
 
+        if isinstance(source_column, bigquery.schema.SchemaField):
+            source_column_type = source_column.field_type
+        else:
+            source_column_type = source_column.type_code
+
+        return_sql_type = type_lookup.get(source_column_type)
         if return_sql_type is None:
-            error_message = "No Hyper SqlType defined for BigQuery source type: {}".format(
-                source_column_type
-            )
+            error_message = "No Hyper SqlType defined for BigQuery source type: {}".format(source_column_type)
             logger.error(error_message)
-            raise LookupError(error_message)
+            raise HyperSQLTypeMappingError(error_message)
 
-        logger.debug(
-            "Translated source column type {} to Hyper SqlType {}".format(
-                source_column_type, return_sql_type
-            )
-        )
+        logger.debug("Translated source column type {} to Hyper SqlType {}".format(source_column_type, return_sql_type))
         return return_sql_type
 
-    def hyper_table_definition(
-        self, source_table: Any, hyper_table_name: str = "Extract"
-    ) -> TableDefinition:
+    def hyper_table_definition(self, source_table: Any, hyper_table_name: str = "Extract") -> TableDefinition:
         """
-        Build a hyper table definition from source_schema
+        Build a hyper table definition from source_table
 
-        source_table (obj): Source table (Instance of google.cloud.bigquery.table.Table)
+        source_table (obj): Source table or query result description
+          (Instance of google.cloud.bigquery.table.Table or dbapi.Cursor.description)
         hyper_table_name (string): Name of the target Hyper table, default="Extract"
 
         Returns a tableauhyperapi.TableDefinition Object
         """
-
-        logger.debug(
-            "Building Hyper TableDefinition for table {}".format(source_table.reference)
-        )
         target_cols = []
-        for source_field in source_table.schema:
-            this_name = source_field.name
-            this_type = self.hyper_sql_type(source_field)
-            this_col = TableDefinition.Column(name=this_name, type=this_type)
+        logger.info("Determine target Hyper table definition...")
+        if isinstance(source_table, bigquery.table.Table):
+            for source_field in source_table.schema:
+                this_name = source_field.name
+                this_type = self.hyper_sql_type(source_field)
+                this_col = TableDefinition.Column(name=this_name, type=this_type)
 
-            # Check for Nullability
-            this_mode = source_field.mode
-            if this_mode == "REPEATED":
-                raise (
-                    HyperSQLTypeMappingError(
-                        "Field mode REPEATED is not implemented in Hyper"
-                    )
-                )
-            if this_mode == "REQUIRED":
-                this_col = TableDefinition.Column(
-                    this_name, this_type, Nullability.NOT_NULLABLE
-                )
+                # Check for Nullability
+                this_mode = source_field.mode
+                if this_mode == "REPEATED":
+                    raise (HyperSQLTypeMappingError("Field mode REPEATED is not implemented in Hyper"))
+                if this_mode == "REQUIRED":
+                    this_col = TableDefinition.Column(this_name, this_type, Nullability.NOT_NULLABLE)
 
-            target_cols.append(this_col)
-            logger.debug("..Column {} - Type {}".format(this_name, this_type))
+                target_cols.append(this_col)
+                logger.info("..Column {} - Type {}".format(this_name, this_type))
+        else:
+            for source_field in source_table:
+                this_name = source_field.name
+                this_type = self.hyper_sql_type(source_field)
+                if source_field.null_ok:
+                    this_col = TableDefinition.Column(name=this_name, type=this_type)
+                else:
+                    this_col = TableDefinition.Column(this_name, this_type, Nullability.NOT_NULLABLE)
+                target_cols.append(this_col)
+                logger.info("..Column {} - Type {}".format(this_name, this_type))
 
-        target_schema = TableDefinition(
-            table_name=TableName("Extract", hyper_table_name), columns=target_cols
-        )
-
+        target_schema = TableDefinition(table_name=TableName("Extract", hyper_table_name), columns=target_cols)
         return target_schema
 
     def _estimate_query_bytes(self, sql_query: str) -> int:
@@ -186,9 +202,7 @@ class BigQueryExtractor(BaseExtractor):
         logger.info("This query will process {} bytes.".format(dryrun_bytes_estimate))
 
         if dryrun_bytes_estimate > MAX_QUERY_SIZE:
-            raise QuerySizeLimitError(
-                "This query will return more than {MAX_QUERY_SIZE} bytes"
-            )
+            raise QuerySizeLimitError("This query will return more than {MAX_QUERY_SIZE} bytes")
         return dryrun_bytes_estimate
 
     def query_to_hyper_files(
@@ -220,47 +234,44 @@ class BigQueryExtractor(BaseExtractor):
 
         if sql_query:
             assert source_table is None
-            dryrun_bytes_estimate = self._estimate_query_bytes(sql_query)
+            self._estimate_query_bytes(sql_query)
 
-            logging.info("Executing query using bigquery.table.RowIterator...")
-            query_job = bq_client.query(sql_query)
+            if USE_DBAPI:
+                logging.info("Executing query using bigquery.dbapi.Cursor...")
+                for path_to_database in super().query_to_hyper_files(
+                    sql_query=sql_query,
+                    hyper_table_name=hyper_table_name,
+                ):
+                    yield path_to_database
+                return
+            else:
+                logging.info("Executing query using bigquery.table.RowIterator...")
+                logging.info(f"Executing SQL={sql_query}")
+                query_job = bq_client.query(sql_query)
 
-            # Determine table structure
-            query_temp_table = bq_client.get_table(query_job.destination)
-            target_table_def = self.hyper_table_definition(
-                query_temp_table, hyper_table_name
-            )
+                # Determine table structure
+                target_table_def = self.hyper_table_definition(source_table=bq_client.get_table(query_job.destination), hyper_table_name=hyper_table_name)
 
-            query_job_iter = bq_client.list_rows(query_job.destination)
-            path_to_database = self.query_result_to_hyper_file(
-                query_job_iter, target_table_def
-            )
-            yield path_to_database
-            return
+                query_result_iter = bq_client.list_rows(query_job.destination)
+                path_to_database = self.query_result_to_hyper_file(
+                    target_table_def=target_table_def,
+                    query_result_iter=query_result_iter,
+                )
+                yield path_to_database
+                return
         else:
             logging.info("Exporting Table:{}...".format(source_table))
             use_extract = True
             extract_prefix = "staging/{}_{}".format(source_table, uuid.uuid4().hex)
-            extract_destination_uri = "gs://{}/{}-*.csv.gz".format(
-                self.staging_bucket, extract_prefix
-            )
+            extract_destination_uri = "gs://{}/{}-*.csv.gz".format(self.staging_bucket, extract_prefix)
             source_table_ref = bq_client.get_table(source_table)
-            target_table_def = self.hyper_table_definition(
-                source_table_ref, hyper_table_name
-            )
-            extract_job_config = bigquery.ExtractJobConfig(
-                compression="GZIP", destination_format="CSV", print_header=False
-            )
-            extract_job = bq_client.extract_table(
-                source_table, extract_destination_uri, job_config=extract_job_config
-            )
+            target_table_def = self.hyper_table_definition(source_table_ref, hyper_table_name)
+            extract_job_config = bigquery.ExtractJobConfig(compression="GZIP", destination_format="CSV", print_header=False)
+            extract_job = bq_client.extract_table(source_table, extract_destination_uri, job_config=extract_job_config)
             extract_job.result()  # Waits for job to complete.
-            logger.info(
-                "Exported {} to {}".format(source_table, extract_destination_uri)
-            )
+            logger.info("Exported {} to {}".format(source_table, extract_destination_uri))
 
         if use_extract:
-            storage_client = storage.Client()
             bucket = storage_client.bucket(self.staging_bucket)
             pending_blobs = 0
             batch_csv_filename = ""
@@ -303,222 +314,9 @@ class BigQueryExtractor(BaseExtractor):
                     yield path_to_database
 
             if pending_blobs:
-                path_to_database = self.csv_to_hyper_file(
-                    path_to_csv=batch_csv_filename, target_table_def=target_table_def
-                )
+                path_to_database = self.csv_to_hyper_file(path_to_csv=batch_csv_filename, target_table_def=target_table_def)
                 os.remove(Path(batch_csv_filename))
                 yield path_to_database
-
-    def load_sample(
-        self,
-        source_table: str,
-        tab_ds_name: str,
-        sample_rows: int = SAMPLE_ROWS,
-        publish_mode: TSC.Server.PublishMode = TSC.Server.PublishMode.CreateNew,
-    ) -> None:
-        """
-        Loads a sample of rows from source_table to Tableau Server
-
-        source_table (string): Source table ref ("project ID.dataset ID.table ID")
-        tab_ds_name (string): Target datasource name
-        publish_mode: One of TSC.Server.[Overwrite|CreateNew] (default=CreateNew)
-        sample_rows (int): How many rows to include in the sample (default=SAMPLE_ROWS)
-        """
-
-        # loads in the first sample_rows of a bigquery table
-        # set publish_mode=TSC.Server.PublishMode.Overwrite to refresh a sample
-        sql_query = "SELECT * FROM `{}` LIMIT {}".format(source_table, sample_rows)
-        first_chunk = True
-        for path_to_database in self.query_to_hyper_files(sql_query=sql_query):
-            if first_chunk:
-                self.publish_hyper_file(path_to_database, tab_ds_name, publish_mode)
-                first_chunk = False
-            else:
-                self.update_datasource_from_hyper_file(
-                    path_to_database=path_to_database,
-                    tab_ds_name=tab_ds_name,
-                    action="INSERT",
-                )
-            os.remove(path_to_database)
-
-    def export_load(
-        self,
-        source_table: str,
-        tab_ds_name: str,
-        publish_mode: TSC.Server.PublishMode = TSC.Server.PublishMode.CreateNew,
-    ) -> None:
-        """
-        Bulk export the contents of source_table and load to Tableau Server
-
-        source_table (string): Source table identifier
-        tab_ds_name (string): Target datasource name
-        publish_mode: One of TSC.Server.[Overwrite|CreateNew] (default=CreateNew)
-        """
-
-        source_table_ref = bq_client.get_table(source_table)
-        target_table_def = self.hyper_table_definition(source_table_ref)
-        first_chunk = True
-        for path_to_database in self.query_to_hyper_files(source_table=source_table):
-            if first_chunk:
-                self.publish_hyper_file(path_to_database, tab_ds_name, publish_mode)
-                first_chunk = False
-            else:
-                self.update_datasource_from_hyper_file(
-                    path_to_database=path_to_database,
-                    tab_ds_name=tab_ds_name,
-                    action="INSERT",
-                )
-            os.remove(path_to_database)
-
-    def append_to_datasource(
-        self,
-        tab_ds_name: str,
-        sql_query: Optional[str] = None,
-        source_table: Optional[str] = None,
-        changeset_table_name: str = "new_rows",
-    ) -> None:
-        """
-        Appends the result of sql_query to a datasource on Tableau Server
-
-        tab_ds_name (string): Target datasource name
-        sql_query (string): The query string that generates the changeset
-        source_table (string): Identifier for source table containing the changeset
-        changeset_table_name (string): The name of the table in the hyper file that
-            contains the changeset (default="new_rows")
-
-        NOTES:
-        - Must specify either sql_query OR source_table, error if both specified
-        """
-
-        if not (bool(sql_query) ^ bool(source_table)):
-            raise Exception("Must specify either sql_query OR source_table")
-
-        for path_to_database in self.query_to_hyper_files(
-            sql_query=sql_query,
-            source_table=source_table,
-            hyper_table_name=changeset_table_name,
-        ):
-            self.update_datasource_from_hyper_file(
-                path_to_database=path_to_database,
-                tab_ds_name=tab_ds_name,
-                changeset_table_name=changeset_table_name,
-                action="INSERT",
-            )
-            os.remove(path_to_database)
-
-    def update_datasource(
-        self,
-        tab_ds_name: str,
-        sql_query: Optional[str] = None,
-        source_table: Optional[str] = None,
-        match_columns: Union[List[str], None] = None,
-        match_conditions_json: Optional[object] = None,
-        changeset_table_name: str = "updated_rows",
-    ):
-        """
-        Updates a datasource on Tableau Server with the changeset from sql_query
-
-        tab_ds_name (string): Target datasource name
-        sql_query (string): The query string that generates the changeset
-        source_table (string): Identifier for source table containing the changeset
-        match_columns (array of tuples): Array of (source_col, target_col) pairs
-        match_conditions_json (string): Define conditions for matching rows in json format.
-            See Hyper API guide for details.
-        changeset_table_name (string): The name of the table in the hyper file that contains
-            the changeset (default="updated_rows")
-
-        NOTES:
-        - Specify either match_columns OR match_conditions_json, error if both specified
-        - Specify either sql_query OR source_table, error if both specified
-        """
-
-        if not ((match_columns is None) ^ (match_conditions_json is None)):
-            raise Exception(
-                "Must specify either match_columns OR match_conditions_json"
-            )
-        if not ((sql_query is None) ^ (source_table is None)):
-            raise Exception("Must specify either sql_query OR source_table")
-
-        for path_to_database in self.query_to_hyper_files(
-            sql_query=sql_query,
-            source_table=source_table,
-            hyper_table_name=changeset_table_name,
-        ):
-            self.update_datasource_from_hyper_file(
-                path_to_database=path_to_database,
-                tab_ds_name=tab_ds_name,
-                match_columns=match_columns,
-                match_conditions_json=match_conditions_json,
-                changeset_table_name=changeset_table_name,
-                action="UPDATE",
-            )
-            os.remove(path_to_database)
-
-    def delete_from_datasource(
-        self,
-        tab_ds_name: str,
-        sql_query: Optional[str] = None,
-        source_table: Optional[str] = None,
-        match_columns: Union[List[str], None] = None,
-        match_conditions_json: Optional[object] = None,
-        changeset_table_name: str = "deleted_rowids",
-    ):
-        """
-        Delete rows matching the changeset from sql_query from a datasource on Tableau Server
-        Simple delete by condition when sql_query is None
-
-        tab_ds_name (string): Target datasource name
-        sql_query (string): The query string that generates the changeset
-        source_table (string): Identifier for source table containing the changeset
-        match_columns (array of tuples): Array of (source_col, target_col) pairs
-        match_conditions_json (string): Define conditions for matching rows in json format.
-            See Hyper API guide for details.
-        changeset_table_name (string): The name of the table in the hyper file that contains
-            the changeset (default="deleted_rowids")
-
-        NOTES:
-        - match_columns overrides match_conditions_json if both are specified
-        - sql_query or source_table must only return columns referenced by the match condition
-        - Specify either sql_query OR source_table, error if both specified
-        - Set sql_query and source_table to None if conditional delete
-            (e.g. json_request="condition": { "op": "<", "target-col": "col1", "const": {"type": "datetime", "v": "2020-06-00"}})
-        - Specify either match_columns OR match_conditions_json, error if both specified
-        """
-        if not ((match_columns is None) ^ (match_conditions_json is None)):
-            raise Exception(
-                "Must specify either match_columns OR match_conditions_json"
-            )
-        if not ((sql_query is None) ^ (source_table is None)):
-            raise Exception("Must specify either sql_query OR source_table")
-
-        if (sql_query is None) and (source_table is None):
-            # Conditional delete
-            if match_conditions_json is None:
-                raise Exception(
-                    "Must specify match_conditions_json if sql_query and source_table are both None"
-                )
-            self.update_datasource_from_hyper_file(
-                path_to_database=None,
-                tab_ds_name=tab_ds_name,
-                match_columns=None,
-                match_conditions_json=match_conditions_json,
-                changeset_table_name=None,
-            )
-        else:
-            for path_to_database in self.query_to_hyper_files(
-                sql_query=sql_query,
-                source_table=source_table,
-                hyper_table_name=changeset_table_name,
-            ):
-                self.update_datasource_from_hyper_file(
-                    path_to_database=path_to_database,
-                    tab_ds_name=tab_ds_name,
-                    match_columns=match_columns,
-                    match_conditions_json=match_conditions_json,
-                    changeset_table_name=changeset_table_name,
-                    action="DELETE",
-                )
-                os.remove(path_to_database)
 
 
 def main():

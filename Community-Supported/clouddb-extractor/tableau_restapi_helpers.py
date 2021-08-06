@@ -110,11 +110,7 @@ def check_status(server_response, success_code):
 
     Throws an ApiCallError exception if the API call fails.
     """
-    logger.debug(
-        "Checking for success_code {} from server_reponse: {}".format(
-            success_code, server_response.text
-        )
-    )
+    logger.debug("Checking for success_code {} from server_reponse: {}".format(success_code, server_response.text))
     if server_response.status_code != success_code:
         parsed_response = ET.fromstring(server_response.text)
 
@@ -124,14 +120,8 @@ def check_status(server_response, success_code):
         detail_element = parsed_response.find(".//t:detail", namespaces=xmlns)
 
         # Retrieve the error code, summary, and detail if the response contains them
-        code = (
-            error_element.get("code", "unknown")
-            if error_element is not None
-            else "unknown code"
-        )
-        summary = (
-            summary_element.text if summary_element is not None else "unknown summary"
-        )
+        code = error_element.get("code", "unknown") if error_element is not None else "unknown code"
+        summary = summary_element.text if summary_element is not None else "unknown summary"
         detail = detail_element.text if detail_element is not None else "unknown detail"
         error_message = "{0}: {1} - {2}".format(code, summary, detail)
         logger.error(error_message)
@@ -184,18 +174,12 @@ def upload_file(file_path, server, auth_token, site_id):
     logger.info("Uploading {} to Tableau Server...".format(file_path))
     file = os.path.basename(file_path)
 
-    logger.info(
-        "\n3. Publishing '{0}' in {1}MB chunks (workbook over 64MB)".format(
-            file, CHUNK_SIZE / (1024 * 1024)
-        )
-    )
+    logger.info("\n3. Publishing '{0}' in {1}MB chunks (workbook over 64MB)".format(file, CHUNK_SIZE / (1024 * 1024)))
     # Initiates an upload session
     uploadID = start_upload_session(server, auth_token, site_id)
 
     # URL for PUT request to append chunks for publishing
-    put_url = server + "/api/{0}/sites/{1}/fileUploads/{2}".format(
-        VERSION, site_id, uploadID
-    )
+    put_url = server + "/api/{0}/sites/{1}/fileUploads/{2}".format(VERSION, site_id, uploadID)
 
     # Read the contents of the file in chunks of 100KB
     with open(file_path, "rb") as f:
@@ -221,9 +205,7 @@ def upload_file(file_path, server, auth_token, site_id):
     return uploadID
 
 
-def patch_datasource(
-    server, auth_token, site_id, datasource_id, file_upload_id, request_json
-):
+def patch_datasource(server, auth_token, site_id, datasource_id, file_upload_id, request_json):
     """
     Submits a PATCH request against specified datasource
     returns Asynchronous Job ID
@@ -238,27 +220,24 @@ def patch_datasource(
     # Generate request id using standard UUID module
     request_id = uuid.uuid4()
 
-    patch_url = server + "/api/{0}/sites/{1}/datasources/{2}".format(
-        VERSION, site_id, datasource_id
-    )
+    patch_url = server + "/api/{0}/sites/{1}/datasources/{2}/data".format(VERSION, site_id, datasource_id)
     if file_upload_id is not None:
-        patch_url += "/data"
         patch_url += "?uploadSessionId={0}".format(url_encode(file_upload_id))
 
-    logger.info(
-        "Updating datasource {} on Tableau Server {}:{}".format(
-            datasource_id, server, patch_url
-        )
-    )
+    logger.info("Updating datasource {} on Tableau Server {}:{}".format(datasource_id, server, patch_url))
+
+    patch_headers = {
+        "x-tableau-auth": auth_token,
+        "RequestID": str(request_id),
+        "Content-Type": "application/json",
+        "Accept": "application/xml",
+    }
+    patch_data = json.dumps(request_json)
+    logger.info(f"PATCH request DATA={patch_data}")
     server_response = requests.patch(
         patch_url,
-        data=json.dumps(request_json),
-        headers={
-            "x-tableau-auth": auth_token,
-            "RequestID": str(request_id),
-            "Content-Type": "application/json",
-            "Accept": "application/xml",
-        },
+        data=patch_data,
+        headers=patch_headers,
     )
 
     check_status(server_response, 202)

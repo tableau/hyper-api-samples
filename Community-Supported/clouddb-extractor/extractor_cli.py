@@ -17,62 +17,21 @@ as a template to start your own projects.
 
 -----------------------------------------------------------------------------
 """
+import importlib
 import logging
 import argparse
 import getpass
 import json
 import yaml
 
-import bigquery_extractor
-
-EXTRACTORS = {"bigquery": bigquery_extractor.BigQueryExtractor}
-DEFAULT_EXTRACTOR = "bigquery"
-SAMPLE_ROWS = 1000
-
-#Load defaults
-config=yaml.safe_load(open("config.yml"))
-tableau_env=config.get('tableau_env')
-cloud_env=config.get('cloud_env')
-TABLEAU_PROJECT = tableau_env.get('project')
-TABLEAU_HOSTNAME = tableau_env.get('server_address')
-DEFAULT_SITE_ID = tableau_env.get('site_id')
-BUCKET_NAME = cloud_env.get('bucket_name')
-
-class IllegalArgumentError(ValueError):
-    pass
-
-def exclusive_args(args, *arg_names, required=True, message=None):
-    count_args = 0
-    for arg_name in arg_names:
-        if bool(vars(args).get(arg_name)):
-            count_args += 1
-    if required:
-        if count_args != 1:
-            if message is None:
-                raise IllegalArgumentError(
-                    "Must specify one of {}".format(",".join(arg_names))
-                )
-            else:
-                raise IllegalArgumentError(message)
-    else:
-        if count_args > 1:
-            if message is None:
-                raise IllegalArgumentError(
-                    "Can only specify one of {}".format(",".join(arg_names))
-                )
-            else:
-                raise IllegalArgumentError(message)
-
-
-def required_arg(args, arg_name, message=None):
-    if not bool(vars(args).get(arg_name)):
-        if message is None:
-            raise argparse.ArgumentError(
-                "Missing required argument:{}".format(arg_name)
-            )
-        else:
-            raise argparse.ArgumentError(message)
-
+# Globals
+EXTRACTORS = {
+    "bigquery": "bigquery_extractor.BigQueryExtractor",
+    "redshift": "redshift_extractor.RedshiftExtractor",
+    "mysql": "mysql_extractor.MySQLExtractor",
+    "postgres": "postgres_extractor.PostgresExtractor",
+}
+CONFIGURATION_FILE = "config.yml"
 
 #
 # Initialize logging
@@ -84,167 +43,169 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s %(funcName)s - %(levelname)s - %(message)s",
     handlers=[logging.FileHandler("debug.log"), consoleHandler],
 )
+logger = logging.getLogger("extractor_cli")
 
-#
-# Parse Command Line Args
-#
-parser = argparse.ArgumentParser(
-    description="""Utilities to build Hyper Extracts from Cloud Databases
-    - load_sample: Load sample rows of data to new Tableau datasource
-    - export_load: Bulk export and load to new Tableau datasource
-    - append: Append the results of a query to an existing Tableau datasource
-    - update: Update an existing Tableau datasource with the changeset from a query
-    - delete: Delete rows from a Tableau datasource that match key columns in a changeset from a query""",
-)
-parser.add_argument(
-    "command",
-    choices=["load_sample", "export_load", "append", "update", "delete"],
-    help="Select the utility function to call",
-)
-parser.add_argument(
-    "--extractor",
-    choices=EXTRACTORS.keys(),
-    default=DEFAULT_EXTRACTOR,
-    help="Select the extractor implementation that matches your cloud database",
-)
-parser.add_argument(
-    "--source_table_id", help="Source table ID",
-)
-parser.add_argument(
-    "--tableau_project",
-    "-P",
-    default=TABLEAU_PROJECT,
-    help="Target project name (default={})".format(TABLEAU_PROJECT),
-)
-parser.add_argument(
-    "--tableau_datasource", required=True, help="Target datasource name",
-)
-parser.add_argument(
-    "--tableau_hostname",
-    "-H",
-    default=TABLEAU_HOSTNAME,
-    help="Tableau connection string (default={})".format(TABLEAU_HOSTNAME),
-)
-parser.add_argument(
-    "--tableau_site_id",
-    "-S",
-    default=DEFAULT_SITE_ID,
-    help="Tableau site id (default={})".format(DEFAULT_SITE_ID),
-)
-parser.add_argument(
-    "--bucket",
-    default=BUCKET_NAME,
-    help="Bucket used for extract staging storage (default={})".format(BUCKET_NAME),
-)
-parser.add_argument(
-    "--sample_rows",
-    default=SAMPLE_ROWS,
-    help="Defines the number of rows to use with LIMIT when command=load_sample (default={})".format(
-        SAMPLE_ROWS
-    ),
-)
-parser.add_argument(
-    "--sql",
-    help="The query string used to generate the changeset when command=[append|update|merge]",
-)
-parser.add_argument(
-    "--sqlfile",
-    help="File containing the query string used to generate the changeset when command=[append|update|delete]",
-)
-parser.add_argument(
-    "--match_columns",
-    action="append",
-    nargs=2,
-    help="Define conditions for matching source and target key columns "
-    "to use when command=[update|delete].  Specify one or more column pairs "
-    "in the format: --match_columns [source_col] [target_col]",
-)
-parser.add_argument(
-    "--match_conditions_json",
-    help="Define conditions for matching rows in json format when command=[update|delete]."
-    "See Hyper API guide for details. ",
-)
-parser.add_argument(
-    "--tableau_username", "-U", help="Tableau user name",
-)
-parser.add_argument(
-    "--tableau_token_name", help="Personal access token name",
-)
-parser.add_argument(
-    "--tableau_token_secretfile", help="File containing personal access token secret",
-)
 
-args = parser.parse_args()
-selected_command = args.command
+class IllegalArgumentError(ValueError):
+    pass
 
-#
-# Initialize Extractor Implementation
-#
-TABLEAU_HOSTNAME = args.tableau_hostname
-TABLEAU_PROJECT = args.tableau_project
-TABLEAU_SITE_ID = args.tableau_site_id
-extractor_class = EXTRACTORS.get(args.extractor)
-exclusive_args(
-    args,
-    "tableau_token_name",
-    "tableau_username",
-    required=True,
-    message="Specify either tableau_token_name OR tableau_username",
-)
-if args.tableau_token_name:
-    required_arg(
+
+def exclusive_args(args, *arg_names, required=True, message=None):
+    count_args = 0
+    for arg_name in arg_names:
+        if bool(vars(args).get(arg_name)):
+            count_args += 1
+    if required:
+        if count_args != 1:
+            if message is None:
+                raise IllegalArgumentError(message="Must specify one of {}".format(",".join(arg_names)))
+            else:
+                raise IllegalArgumentError(message)
+    else:
+        if count_args > 1:
+            if message is None:
+                raise IllegalArgumentError("Can only specify one of {}".format(",".join(arg_names)))
+            else:
+                raise IllegalArgumentError(message)
+
+
+def required_arg(args, arg_name, message=None):
+    if not bool(vars(args).get(arg_name)):
+        if message is None:
+            raise IllegalArgumentError("Missing required argument:{}".format(arg_name))
+        else:
+            raise IllegalArgumentError(message)
+
+
+def add_arg_with_default(parser, config, default_config_key, help, required, *args, **kwargs):
+    default_value = None
+    if default_config_key is not None:
+        # May have to walk the tree in YAML file
+        config_tree = default_config_key.split(".")
+        this_config = config
+        levels = len(config_tree)
+        this_level = 1
+        for config_level in config_tree:
+            try:
+                this_value = this_config.get(config_level)
+            except AttributeError:
+                this_value = None
+
+            if this_value is None:
+                break
+            if this_level == levels:
+                default_value = this_value
+            else:
+                this_config = this_value
+                this_level += 1
+
+    if default_value is None:
+        parser.add_argument(*args, help=help, required=required, **kwargs)
+    else:
+        help = help + f" (default={default_value})"
+        parser.add_argument(*args, default=default_value, help=help, **kwargs)
+
+
+def get_int_from_arg(this_str, arg_name, is_required=False):
+    if this_str is None:
+        if is_required:
+            raise IllegalArgumentError("Missing required argument:{}".format(arg_name))
+        else:
+            return 0
+
+    try:
+        this_int = int(this_str)
+        return this_int
+    except ValueError:
+        raise IllegalArgumentError("Invalid value provided for {}, expected int, received {}".format(arg_name, this_str))
+
+
+def main():
+    # Load defaults
+    config = yaml.safe_load(open("config.yml"))
+
+    # Define Command Line Args
+    parser = argparse.ArgumentParser(
+        prog="python3 extractor_cli.py",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""
+Utilities to synchronize cloud databases to published Hyper extracts
+
+Functions:
+- load_sample: Extract a sample subset of rows from the source table to a new
+  published datasource
+- export_load: Full extract of source table to a new published datasource
+- append: Append rows from a query or table to an existing published datasource
+- update: Updates an existing published datasource with the changeset from a
+  query or table
+- delete: Delete rows from a published datasource that match a condition and/or
+  that match the primary keys in the changeset from a query or table
+        """,
+    )
+    parser.add_argument(
+        "command",
+        choices=["load_sample", "export_load", "append", "update", "delete"],
+        help="Select the function to call",
+    )
+    add_arg_with_default(
+        parser,
+        config,
+        "default_extractor",
+        "Select the extractor implementation that matches your database",
+        True,
+        "--extractor",
+        choices=EXTRACTORS.keys(),
+    )
+    parser.add_argument(
+        "--source_table_id",
+        help="Fully qualified table identifier from source database",
+    )
+    add_arg_with_default(parser, config, "sample_rows", "Defines the number of rows to use with LIMIT when command=load_sample", False, "--sample_rows")
+
+    parser.add_argument(
+        "--sql",
+        help="The query string used to generate the changeset when command=[append|update|merge]",
+    )
+    parser.add_argument(
+        "--sqlfile",
+        help="File containing the query string used to generate the changeset when command=[append|update|delete]",
+    )
+    parser.add_argument(
+        "--match_columns",
+        action="append",
+        nargs=2,
+        help="Define conditions for matching source and target key columns "
+        "to use when command=[update|delete].  Specify one or more column pairs "
+        "in the format: --match_columns [source_col] [target_col]",
+    )
+    parser.add_argument(
+        "--match_conditions_json",
+        help="Json file defining conditions for matching rows when command=[update|delete].",
+    )
+
+    # Tableau Server / Tableau Online options
+    add_arg_with_default(parser, config, "tableau_env.server_address", "Tableau connection string", True, "--tableau_hostname", "-H")
+    add_arg_with_default(parser, config, "tableau_env.site_id", "Tableau site id", True, "--tableau_site_id", "-S")
+    add_arg_with_default(parser, config, "tableau_env.project", "Target project name", True, "--tableau_project", "-P")
+    add_arg_with_default(parser, config, "tableau_env.datasource", "Target datasource name", True, "--tableau_datasource")
+    add_arg_with_default(parser, config, "tableau_env.username", "Tableau user name", False, "--tableau_username", "-U")
+    add_arg_with_default(parser, config, "tableau_env.token_name", "Personal access token name", False, "--tableau_token_name")
+    add_arg_with_default(parser, config, "tableau_env.token_secretfile", "File containing personal access token secret", False, "--tableau_token_secretfile")
+
+    # Parse Args
+    args = parser.parse_args()
+    selected_command = args.command
+    selected_extractor = args.extractor
+    db_env = config.get(selected_extractor)
+
+    # Check for conflicting args
+    exclusive_args(
         args,
-        "tableau_token_secretfile",
-        "Must specify tableau_token_secretfile with tableau_token_name",
+        "tableau_token_name",
+        "tableau_username",
+        required=True,
+        message="Specify either tableau_token_name OR tableau_username",
     )
-    tableau_token_secret = ""
-    with open(args.tableau_token_secretfile, "r") as myfile:
-        tableau_token_secret = myfile.read().strip()
-
-    extractor = extractor_class(
-        tableau_hostname=TABLEAU_HOSTNAME,
-        tableau_project=TABLEAU_PROJECT,
-        tableau_site_id=TABLEAU_SITE_ID,
-        staging_bucket=BUCKET_NAME,
-        tableau_token_name=args.tableau_token_name,
-        tableau_token_secret=tableau_token_secret,
-    )
-else:
-    TABLEAU_USERNAME = args.tableau_username
-    TABLEAU_PASSWORD = getpass.getpass("Password: ")
-    extractor = extractor_class(
-        tableau_hostname=TABLEAU_HOSTNAME,
-        tableau_project=TABLEAU_PROJECT,
-        tableau_site_id=TABLEAU_SITE_ID,
-        staging_bucket=BUCKET_NAME,
-        tableau_username=TABLEAU_USERNAME,
-        tableau_password=TABLEAU_PASSWORD,
-    )
-
-#
-# Implement TABLE level commands here
-#
-if selected_command in ("load_sample", "export_load"):
-    required_arg(
-        args,
-        "source_table_id",
-        "Must specify source_table_id when command is load_sample or export_load",
-    )
-    if selected_command == "load_sample":
-        extractor.load_sample(
-            source_table=args.source_table_id,
-            tab_ds_name=args.tableau_datasource,
-            sample_rows=args.sample_rows,
-        )
-    if selected_command == "export_load":
-        extractor.export_load(
-            source_table=args.source_table_id, tab_ds_name=args.tableau_datasource,
-        )
-
-#
-# Implement QUERY processing commands here
-#
-if selected_command in ("append", "update", "delete"):
     exclusive_args(
         args,
         "sql",
@@ -253,10 +214,72 @@ if selected_command in ("append", "update", "delete"):
         required=(selected_command != "delete"),
         message="Specify either sql OR sqlfile OR source_table_id",
     )
+
+    # Load sqlfile to sql_string if used
     sql_string = args.sql
     if args.sqlfile:
         with open(args.sqlfile, "r") as myfile:
             sql_string = myfile.read()
+        logger.info(f"SQL={sql_string}")
+
+    # Initialize Extractor Implementation
+    # These are loaded on demand so that you don't have to install
+    # client libraries for all source database implementations
+    extractor_class_str = EXTRACTORS.get(selected_extractor)
+    extractor_module_str = extractor_class_str.split(".")[0]
+    extractor_class_str = extractor_class_str.split(".")[1]
+    extractor_module = importlib.import_module(extractor_module_str)
+    extractor_class = getattr(extractor_module, extractor_class_str)
+
+    # Tableau Authentication can be by token or username/password (prompt)
+    if args.tableau_token_name:
+        required_arg(
+            args,
+            "tableau_token_secretfile",
+            "Must specify tableau_token_secretfile with tableau_token_name",
+        )
+        tableau_token_secret = ""
+        with open(args.tableau_token_secretfile, "r") as myfile:
+            tableau_token_secret = myfile.read().strip()
+
+        extractor = extractor_class(
+            source_database_config=db_env,
+            tableau_hostname=args.tableau_hostname,
+            tableau_project=args.tableau_project,
+            tableau_site_id=args.tableau_site_id,
+            tableau_token_name=args.tableau_token_name,
+            tableau_token_secret=tableau_token_secret,
+        )
+    else:
+        tableau_password = getpass.getpass("Tableau Password: ")
+        extractor = extractor_class(
+            source_database_config=db_env,
+            tableau_hostname=args.tableau_hostname,
+            tableau_project=args.tableau_project,
+            tableau_site_id=args.tableau_site_id,
+            tableau_username=args.tableau_username,
+            tableau_password=tableau_password,
+        )
+
+    if selected_command == "load_sample":
+        required_arg(
+            args,
+            "sample_rows",
+            "Must specify sample_rows when action is load_sample",
+        )
+        extractor.load_sample(
+            sql_query=sql_string,
+            source_table=args.source_table_id,
+            tab_ds_name=args.tableau_datasource,
+            sample_rows=get_int_from_arg(args.sample_rows, "sample_rows", True),
+        )
+
+    if selected_command == "export_load":
+        extractor.export_load(
+            sql_query=sql_string,
+            source_table=args.source_table_id,
+            tab_ds_name=args.tableau_datasource,
+        )
 
     if selected_command == "append":
         extractor.append_to_datasource(
@@ -264,20 +287,24 @@ if selected_command in ("append", "update", "delete"):
             source_table=args.source_table_id,
             tab_ds_name=args.tableau_datasource,
         )
-    else:
-        #
-        #  Implement update, delete, merge commands here
-        #
+
+    if selected_command in ("update", "delete"):
         exclusive_args(
             args,
             "match_columns",
             "match_conditions_json",
             required=True,
-            message="Must specify either match_columns OR match_conditions_json when command is update,delete,merge",
+            message="Must specify either match_columns OR match_conditions_json when command is update or delete",
         )
+        # Load match_conditions_json from file
         match_conditions_json = None
         if args.match_conditions_json:
-            match_conditions_json = json.loads(args.match_conditions_json)
+            json_file = args.match_conditions_json
+            logger.info("Parsing json file: {}".format(json_file))
+            with open(json_file, "r") as myfile:
+                match_conditions_json = json.load(myfile)
+            logger.info("condition={}".format(json.dumps(match_conditions_json)))
+
         if selected_command == "update":
             extractor.update_datasource(
                 sql_query=sql_string,
@@ -294,3 +321,7 @@ if selected_command in ("append", "update", "delete"):
                 match_columns=args.match_columns,
                 match_conditions_json=match_conditions_json,
             )
+
+
+if __name__ == "__main__":
+    main()
