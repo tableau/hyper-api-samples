@@ -7,7 +7,7 @@ This sample demonstrates how to leverage the Hyper API and Tableau Server Client
 - Create a single-table `.hyper` file
 - Publish the file as a datasource directly to Tableau Server or Tableau Online, without a .tdsx file
 
-It should serve as a starting point for anyone looking to automate the publishing process of multi-table extracts and data sources to Tableau. The Tableau Server Client library (TSC) is able to publish single-table hyper files directly to Online/Server, but this is not currently the case for any extract with multiple tables. Because of this, there is an important additional step of swapping the newly built hyper file into an existing packaged data source.
+It should serve as a starting point for anyone looking to automate the publishing process of (single-table) hyper files to Tableau Server or Online. 
 
 ## __Prerequisites__
 To run the script, you will need:
