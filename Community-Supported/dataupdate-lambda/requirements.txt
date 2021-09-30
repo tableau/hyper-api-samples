@@ -1,0 +1,3 @@
+tableauhyperapi>=0.0.13394
+requests
+uuid
