@@ -2,11 +2,11 @@
 
 ![Community Supported](https://img.shields.io/badge/Support%20Level-Community%20Supported-53bd92.svg)
 
-This little utility script lists the schemas, tables and columns inside a Hyper file, thereby providing you a simple first peak into a Hyper file before actually opening it, e.g., with Tableau.
+This little utility script lists the schemas, tables and columns inside a Hyper file, thereby providing you a first quick peak into a Hyper file before actually opening it, e.g., with Tableau.
 
 This sample can serve as a starting point for anyone who wants to, e.g., programmatically enumerate all data contained inside a `.hyper` file.
 
-But already on its own, it can be a pretty useful command line utility if you just need to knwo the table names/column names to write your own SQL queries.
+But already on its own, it can be a pretty useful command line utility if you just need to know the table names/column names to write your own SQL queries.
 
 # Get started
 
