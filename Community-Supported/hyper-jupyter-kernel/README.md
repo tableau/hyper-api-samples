@@ -114,7 +114,7 @@ Either way: The `hyper_kernel` allows you to quickly do so.
 
 To open the Hyper file, use
 ```
-\attach "path/to/my/data.hyper" database1
+\attach "data.hyper" database1
 ```
 
 from here on, you can explore the data inside your file.
@@ -140,5 +140,5 @@ In particular, you can use:
 * `\o -` to disard the output of all following queries (mostly useful for measuring execution times if we don't care about the actual result)
 * `\o` to reset the output and display it on the console again
 * `\i <file>` to read a query from a file and execute it
-* `\attach <file> <alias>` to open a Hyper file within your current session, such that you can access the tables contained within the Hyper file
+* `\attach <filepath> <alias>` to open a Hyper file within your current session, such that you can access the tables contained within the Hyper file
 * `\detach <alias>` to close a Hyper file which is currently attached
