@@ -83,7 +83,7 @@ CREATE DATABASE "my_data.hyper";
 
 and load that newly created database into our session:
 ```
-\attach "patch/to/my/data.hyper" database1
+\attach "my_data.hyper" database1
 ```
 
 Next, we will need to [create a table](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-createtable.html):
