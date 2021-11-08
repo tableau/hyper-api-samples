@@ -83,21 +83,22 @@ public class ReadAndPrintDataFromExistingHyperFile {
                 // Print all rows from the "Extract"."Extract" table
                 System.out.println("These are all rows in the table 'Extract'");
                 TableName tableName = new TableName(extractSchema, "Extract");
-                Result result = connection.executeQuery("SELECT * FROM " + tableName.toString());
-                ResultSchema resultSchema = result.getSchema();
+                try (Result result = connection.executeQuery("SELECT * FROM " + tableName.toString())) {
+                    ResultSchema resultSchema = result.getSchema();
 
-                int categoryPosition = resultSchema.getColumnPositionByName("Category").getAsInt();
-                int orderDatePosition = resultSchema.getColumnPositionByName("Order Date").getAsInt();
-                int salesTargetPosition = resultSchema.getColumnPositionByName("Sales Target").getAsInt();
-                int segmentPosition = resultSchema.getColumnPositionByName("Segment").getAsInt();
+                    int categoryPosition = resultSchema.getColumnPositionByName("Category").getAsInt();
+                    int orderDatePosition = resultSchema.getColumnPositionByName("Order Date").getAsInt();
+                    int salesTargetPosition = resultSchema.getColumnPositionByName("Sales Target").getAsInt();
+                    int segmentPosition = resultSchema.getColumnPositionByName("Segment").getAsInt();
 
-                while (result.nextRow()) {
-                    System.out.println("{" +
-                            result.getString(categoryPosition) + ", " +
-                            result.getLocalDate(orderDatePosition) + ", " +
-                            result.getLong(salesTargetPosition) + ", " +
-                            result.getString(segmentPosition) +
-                            "}");
+                    while (result.nextRow()) {
+                        System.out.println("{" +
+                                result.getString(categoryPosition) + ", " +
+                                result.getLocalDate(orderDatePosition) + ", " +
+                                result.getLong(salesTargetPosition) + ", " +
+                                result.getString(segmentPosition) +
+                                "}");
+                    }
                 }
                 System.out.println();
             }
