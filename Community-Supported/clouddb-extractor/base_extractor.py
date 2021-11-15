@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Tableau Community supported Hyper API sample
+Tableau Community supported Hyper API sample.
 
 This module provies an Abstract Base Class with some utility methods to extract
 from cloud databases to "live to hyper" Tableau Datasources.  This implements a
@@ -45,7 +45,6 @@ from typing import Dict, Optional, Any, Union, List, Iterable, Generator
 import re
 
 import tableauserverclient as TSC
-import tableau_restapi_helpers as REST
 from tableauhyperapi import (
     HyperProcess,
     Connection,
@@ -136,29 +135,29 @@ CONFIGURATION_FILE: str = "config.yml"
 
 
 class TableauJobError(Exception):
-    """Exception: Tableau Job Failed"""
+    """Exception: Tableau Job Failed."""
 
     pass
 
 
 class TableauResourceNotFoundError(Exception):
-    """Exception: Tableau Resource not found"""
+    """Exception: Tableau Resource not found."""
 
     pass
 
 
 class HyperSQLTypeMappingError(Exception):
-    """Exception: Could not identify a target Hyper field type for source database field"""
+    """Exception: Could not identify a target Hyper field type for source database field."""
 
     pass
 
 
 class ExtractorConfigurationError(Exception):
-    """Exception: config.yml is missing required section(s) or argument(s)"""
+    """Exception: config.yml is missing required section(s) or argument(s)."""
 
 
 def log_execution_time(func):
-    """Decorator used during debugging to time execution"""
+    """Decorator: Log function execution time."""
 
     def execution_timer(*args, **kw):
         ts = time.time()
@@ -171,7 +170,7 @@ def log_execution_time(func):
 
 
 def debug(func):
-    """Log the function arguments and return value"""
+    """Decorator: Log the function arguments and return value."""
 
     @functools.wraps(func)
     def wrapper_debug(*args, **kwargs):
@@ -190,6 +189,7 @@ def debug(func):
 
 
 def tempfile_name(prefix: str = "", suffix: str = "") -> str:
+    """Return a unique temporary file name."""
     return "{}/tableau_extractor_{}{}{}".format(TEMP_DIR, prefix, uuid.uuid4().hex, suffix)
 
 
@@ -339,46 +339,18 @@ class BaseExtractor(ABC):
         logger.error("No project found for:{}".format(tab_project))
         raise TableauResourceNotFoundError("No project found for:{}".format(tab_project))
 
-    def _get_datasource_id(self, tab_datasource: str) -> str:
+    def _get_datasource_by_name(self, tab_datasource: str) -> str:
         """
-        Return id for tab_datasource
+        Return datasource object with name=tab_datasource.
         """
         # Get project_id from project_name
 
         all_datasources, pagination_item = self.tableau_server.datasources.get()
         for datasource in all_datasources:
             if datasource.name == tab_datasource:
-                return datasource.id
+                return datasource
 
         raise TableauResourceNotFoundError("No datasource found for:{}".format(tab_datasource))
-
-    def _wait_for_async_job(self, async_job_id: str) -> int:
-        """
-        Waits for async job to complete and returns finish_code
-        """
-
-        completed_at = None
-        finish_code = None
-        jobinfo = None
-        while completed_at is None:
-            time.sleep(ASYNC_JOB_POLL_INTERVAL)
-            jobinfo = self.tableau_server.jobs.get_by_id(async_job_id)
-            completed_at = jobinfo.completed_at
-            finish_code = jobinfo.finish_code
-            logger.info("Job {} ... progress={} finishCode={}".format(async_job_id, jobinfo.progress, finish_code))
-        if finish_code == "0":
-            logger.info("Job {} Completed: Finish Code: {}".format(async_job_id, finish_code))
-        else:
-            full_job_details = REST.get_job_details(
-                self.tableau_hostname,
-                self.tableau_server.auth_token,
-                self.tableau_server.site_id,
-                async_job_id,
-            )
-            logger.error("Job {} Completed with non-zero Finish Code: {} : {}".format(async_job_id, finish_code, full_job_details))
-            logger.error("Check jobs pane in Tableau for detailed failure information")
-
-        return finish_code
 
     def query_result_to_hyper_file(
         self,
@@ -388,7 +360,7 @@ class BaseExtractor(ABC):
         hyper_table_name: str = "Extract",
     ) -> Path:
         """
-        Writes query output to a Hyper file
+        Write query output to a Hyper file.
         Returns Path to hyper file
 
         target_table_def (TableDefinition): Schema for target extract table
@@ -542,6 +514,7 @@ class BaseExtractor(ABC):
             (e.g. json_request="condition": { "op": "<", "target-col": "col1", "const": {"type": "datetime", "v": "2020-06-00"}})
         - When action is DELETE, it is an error if the source table contains any additional columns not referenced by the condition. Those columns are pointless and we want to let the user know, so they can fix their scripts accordingly.
         """
+
         action = action.upper()
         match_conditions_args = []
         if match_columns is not None:
@@ -559,47 +532,30 @@ class BaseExtractor(ABC):
                 match_conditions_json = match_conditions_args[0]
 
         if action == "UPDATE":
-            # Update action
-            # The Update operation updates existing tuples inside the target table.
-            # It uses a `condition` to decide which tuples (rows) to update.
-            #
-            # Example
-            #
-            # {"action": "update",
-            #  "target-table": "my_data",
-            #  "source-table": "uploaded_table",
-            #  "condition": {"op": "=", "target-col": "row_id", "source-col": "update_row_id"}
-            # }
-            # Parameters:
-            #
-            # `target-table` (string; required): the table name inside the target database into which we will insert data
-            # `target-schema` (string; required): the schema name inside the target database; default: the one, unique schema name inside the target database in case the target db has only one schema; error otherwise
-            # `source-table` (string; required): the table name inside the source database from which the data will be inserted
-            # `source-schema` (string; required): analogous to target-schema, but for the source table
-            # `condition` (condition-specification; required): specifies the condition used to select the columns to be updated
-            # To determine the updated columns, we will use the following default algorithm:
-            #
-            # We will map columns from the the source table onto the target table, based on their column name. This mapping will not consider the order of columns inside the tables, but will be solely based on column names. The same rules as for insert apply for this column mapping.
-            # If any column from the source table does not have a corresponding column in the target table and is not referenced by the `condition` either, we will raise an error
-            # This algorithm ensures that:
-            #
-            # we update all columns if they have a matching name
-            # we bring mismatching columns to the users attention (e.g., if his column name is “userid” instead of “user_id”)
-            # The update action is mapped to a SQL query of the form
-            #
-            # UPDATE target_db.<target-schema>.<target>
-            # SET
-            #    <target column 1> = <source column 1>,
-            #    <target column 2> = <source column 2>,
-            #    ...
-            # FROM <source>
-            # WHERE <condition>
-            # -------
-            json_request = {
-                "actions": [
-                    # UPDATE action
+            actions_json = [
+                {
+                    "action": "update",
+                    "source-schema": "Extract",
+                    "source-table": changeset_table_name,
+                    "target-schema": "Extract",
+                    "target-table": "Extract",
+                    "condition": match_conditions_json,
+                },
+            ]
+        elif action == "DELETE":
+            if path_to_database is None:
+                actions_json = [
                     {
-                        "action": "update",
+                        "action": "delete",
+                        "target-schema": "Extract",
+                        "target-table": "Extract",
+                        "condition": match_conditions_json,
+                    },
+                ]
+            else:
+                actions_json = [
+                    {
+                        "action": "delete",
                         "source-schema": "Extract",
                         "source-table": changeset_table_name,
                         "target-schema": "Extract",
@@ -607,92 +563,8 @@ class BaseExtractor(ABC):
                         "condition": match_conditions_json,
                     },
                 ]
-            }
-        elif action == "DELETE":
-            # # The Delete operation deletes tuples from its target table.
-            # It uses its `condition` to determine which tuples to delete.
-            #
-            # Example 1
-            #
-            # {"action": "delete",
-            #  "target-table": "my_extract_table",
-            #  "condition": {
-            #    "op": "<",
-            #    "target-col": "col1",
-            #    "const": {"type": "datetime", "v": "2020-06-00"}}
-            # }
-            # Example 2
-            #
-            # {"action": "delete",
-            #  "target-table": "my_extract_table",
-            #  "source-table": "deleted_row_id_table",
-            #  "condition": {"op": "=", "target-col": "id", "source-col": "deleted_id"}
-            # }
-            # Parameters:
-            #
-            # `target-table` (string; required): the table name inside the source database from which we will insert data
-            # `target-schema` (string; required): analogous to source-schema, but for the source table
-            # `source-table` (string; optional): the table name inside the target database into which the data will be inserted
-            # `source-schema` (string; optional): the schema name inside the target database; default: the one, unique schema name inside the target database in case the target db has only one schema; error otherwise
-            # `condition` (condition-specification; required): specifies the condition used to select the columns for deletion
-            #
-            # See separate section for the definition of `condition`s.
-            #
-            # If no `source` table is specified, the delete action will be translated to
-            #
-            # DELETE FROM target_db.<target-schema>.<target>
-            # WHERE <condition>
-            # This variant will be useful for “sliding window” extract, as described below in the examples section
-            #
-            # If a `source` table is specified, the delete action will be translated to
-            #
-            # DELETE FROM target_db.<target-schema>.<target>
-            # WHERE EXISTS (
-            #    SELECT * FROM <source-db>.<source-schema>.<source>
-            #    WHERE <condition>
-            # )
-            # This variant is useful to delete many tuples, e.g., based on their row ID
-            #
-            # It is an error if the source table contains any additional columns not referenced by the condition. Those columns are pointless and we want to let the user know, so they can fix their scripts accordingly.
-            if path_to_database is None:
-                json_request = {
-                    "actions": [
-                        # UPDATE action
-                        {
-                            "action": "delete",
-                            "target-schema": "Extract",
-                            "target-table": "Extract",
-                            "condition": match_conditions_json,
-                        },
-                    ]
-                }
-            else:
-                json_request = {
-                    "actions": [
-                        # UPDATE action
-                        {
-                            "action": "delete",
-                            "source-schema": "Extract",
-                            "source-table": changeset_table_name,
-                            "target-schema": "Extract",
-                            "target-table": "Extract",
-                            "condition": match_conditions_json,
-                        },
-                    ]
-                }
         elif action == "INSERT":
-            # The "insert" operation appends one or more rows from a table inside the uploaded Hyper file into the updated Hyper file on the server.
-            #
-            # Example
-            #
-            # {"action": "insert", "source-table": "added_users", "target-table": "current_users"}
-            # Parameters:
-            #
-            # `target-table` (string; required): the table name inside the target database from which we will insert data
-            # `target-schema` (string; required): analogous to target-schema, but for the source table
-            # `source-table` (string; required): the table name inside the source database into which the data will be inserted
-            # `source-schema` (string; required): the schema name inside the source database; default: the one, unique schema name inside the target database in case the target db has only one schema; error otherwise
-            json_request = {
+            actions_json = {
                 "actions": [
                     # INSERT action
                     {
@@ -706,29 +578,15 @@ class BaseExtractor(ABC):
             }
         else:
             raise Exception("Unknown action {} specified for _update_datasource_from_hyper_file".format(action))
-        file_upload_id = None
-        if path_to_database is not None:
-            # Update or delete by row_id
-            file_upload_id = REST.upload_file(
-                path_to_database,
-                self.tableau_hostname,
-                self.tableau_server.auth_token,
-                self.tableau_server.site_id,
-            )
-        ds_id = self._get_datasource_id(tab_ds_name)
+
+        this_datasource = self._get_datasource_by_name(tab_ds_name)
         lock = self._datasource_lock(tab_ds_name)
         with lock:
-            async_job_id = REST.patch_datasource(
-                server=self.tableau_hostname,
-                auth_token=self.tableau_server.auth_token,
-                site_id=self.tableau_server.site_id,
-                datasource_id=ds_id,
-                file_upload_id=file_upload_id,
-                request_json=json_request,
+            request_id = str(uuid.uuid4())
+            async_job = self.tableau_server.datasources.update_data(
+                datasource_or_connection_item=this_datasource, request_id=request_id, actions=actions_json, payload=path_to_database
             )
-            finish_code = self._wait_for_async_job(async_job_id)
-            if finish_code != "0":
-                raise TableauJobError("Patch job {} terminated with non-zero return code:{}".format(async_job_id, finish_code))
+            self.tableau_server.jobs.wait_for_job(async_job)
 
     def query_to_hyper_files(
         self,
@@ -751,7 +609,6 @@ class BaseExtractor(ABC):
         NOTES:
         - Specify either sql_query OR source_table, error if both specified
         """
-
         if not (bool(sql_query) ^ bool(source_table)):
             raise Exception("Must specify either sql_query OR source_table")
 
@@ -775,7 +632,7 @@ class BaseExtractor(ABC):
         publish_mode: TSC.Server.PublishMode = TSC.Server.PublishMode.CreateNew,
     ) -> None:
         """
-        Loads a sample of rows from source_table to Tableau Server
+        Load a sample of rows from source_table to Tableau Server.
 
         tab_ds_name (string): Target datasource name
         source_table (string): Source table identifier
