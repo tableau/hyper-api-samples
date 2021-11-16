@@ -9,52 +9,112 @@
 #
 # -----------------------------------------------------------------------------
 
-from tableauhyperapi import *
-from tableau_tools import *
-from tableau_tools.tableau_documents import *
+from tableauhyperapi import HyperProcess, Telemetry, \
+    Connection, CreateMode, \
+    NOT_NULLABLE, NULLABLE, SqlType, TableDefinition, \
+    Inserter
 import tableauserverclient as TSC
+from pathlib import Path
+from datetime import datetime
 import os, json, sys
 
-def get_data():
-    '''This function is responsible for returning the two tables as nested lists, as shown with the example below.'''
+orders_table = TableDefinition(
+    # Since the table name is not prefixed with an explicit schema name, the table will reside in the default "public" namespace.
+    table_name="Orders",
+    columns=[
+        TableDefinition.Column(name="Address ID", type=SqlType.small_int(), nullability=NOT_NULLABLE),
+        TableDefinition.Column(name="Customer ID", type=SqlType.text(), nullability=NOT_NULLABLE),
+        TableDefinition.Column(name="Order Date", type=SqlType.date(), nullability=NOT_NULLABLE),
+        TableDefinition.Column(name="Order ID", type=SqlType.text(), nullability=NOT_NULLABLE),
+        TableDefinition.Column(name="Ship Date", type=SqlType.date(), nullability=NULLABLE),
+        TableDefinition.Column(name="Ship Mode", type=SqlType.text(), nullability=NULLABLE)
+    ]
+)
 
-    # Sample data held as lists. Column order must be consistent and match the table definitions defined below.
-    table_one = [[123, 40, 'John', 'Order#1'], [123, 90, 'Jane', 'Order#2'], [456, 110, 'John', 'Order#3'], [456, 80, 'Jane', 'Order#4']]
-    table_two = [[123, 'Lemonade', 'Beverage'], [456, 'Cookie', 'Food']]
+customer_table = TableDefinition(
+    # Since the table name is not prefixed with an explicit schema name, the table will reside in the default "public" namespace.
+    table_name="Customer",
+    columns=[
+        TableDefinition.Column(name="Customer ID", type=SqlType.text(), nullability=NOT_NULLABLE),
+        TableDefinition.Column(name="Customer Name", type=SqlType.text(), nullability=NOT_NULLABLE),
+        TableDefinition.Column(name="Loyalty Reward Points", type=SqlType.big_int(), nullability=NOT_NULLABLE),
+        TableDefinition.Column(name="Segment", type=SqlType.text(), nullability=NOT_NULLABLE)
+    ]
+)
+
+def create_hyper_file_and_insert_data(path_to_database):
+    """
+    Shows how to create a hyper file with multiple tables and how to add assumed constraints such that Tableau Server 
+    can infer which data model to analyze in the data source.
+    """
+    print("Creating hyper file for publishing.")
+    # Starts the Hyper Process with telemetry enabled to send data to Tableau.
+    # To opt out, simply set telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU.
+    with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU) as hyper:
+        # Creates new Hyper file. Replaces file with CreateMode.CREATE_AND_REPLACE if it already exists.
+        with Connection(endpoint=hyper.endpoint,
+                        database=path_to_database,
+                        create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
+            # Create multiple tables.
+            connection.catalog.create_table(table_definition=orders_table)
+            connection.catalog.create_table(table_definition=customer_table)
+            # Create assumed primary key for the customer table and a foreign key referencing the "Customer ID" in the orders table.
+            # This enables Tableau Server to infer which data model to analyze in the data source.
+            connection.execute_command(f'ALTER TABLE {customer_table.table_name} ADD ASSUMED PRIMARY KEY ("Customer ID")')
+            connection.execute_command(f'''ALTER TABLE {orders_table.table_name} ADD ASSUMED FOREIGN KEY 
+                ("Customer ID") REFERENCES  {customer_table.table_name} ( "Customer ID" )''')
+
+            # Insert data into Orders table.
+            orders_data_to_insert = [
+                [399, "DK-13375", datetime(2012, 9, 7), "CA-2011-100006", datetime(2012, 9, 13), "Standard Class"],
+                [530, "EB-13705", datetime(2012, 7, 8), "CA-2011-100090", datetime(2012, 7, 12), "Standard Class"]
+            ]
+
+            with Inserter(connection, orders_table) as inserter:
+                inserter.add_rows(rows=orders_data_to_insert)
+                inserter.execute()
+
+            # Insert data into Customers table.
+            customer_data_to_insert = [
+                ["DK-13375", "Dennis Kane", 518, "Consumer"],
+                ["EB-13705", "Ed Braxton", 815, "Corporate"]
+            ]
+
+            with Inserter(connection, customer_table) as inserter:
+                inserter.add_rows(rows=customer_data_to_insert)
+                inserter.execute()
+
+def publish_hyper(token_name, token_value, site_name, server_address, project_name, path_to_database):
+    """
+    Shows how to leverage the Tableau Server Client (TSC) to sign in and publish the hyper file directly to Tableau Online/Server.
+    """
+    # Sign in to server
+    tableau_auth = TSC.PersonalAccessTokenAuth(token_name=token_name, personal_access_token=token_value, site_id=site_name)
+    server = TSC.Server(server_address, use_server_version=True)
     
-    # Create a list of the data_tables to pass to Hyper
-    table_data = [table_one, table_two]
+    print(f"Signing into {site_name} at {server_address}")
+    with server.auth.sign_in(tableau_auth):
+        # Define publish mode - Overwrite, Append, or CreateNew
+        publish_mode = TSC.Server.PublishMode.Overwrite
+        
+        # Get project_id from project_name
+        all_projects, pagination_item = server.projects.get()
+        for project in TSC.Pager(server.projects):
+            if project.name == project_name:
+                project_id = project.id
     
-    return table_data
-
-def build_tables():
-    '''Builds the two tables for the multitable extract.'''
-    # Since the table names are not prefixed with an explicit schema name, the tables will reside in the default "public" namespace.
-    # It is important to match the order of the table definitions with the data tables returned in get_data()
-    table_one = TableDefinition(
-        table_name="sales", 
-        columns=[
-            TableDefinition.Column("Product Key", SqlType.int()),
-            TableDefinition.Column("Sales", SqlType.int()),
-            TableDefinition.Column("Customer", SqlType.text()),
-            TableDefinition.Column("Order ID", SqlType.text())
-        ]
-    )
-    table_two = TableDefinition(
-        table_name="products", 
-        columns=[
-            TableDefinition.Column("Product Key", SqlType.int()),
-            TableDefinition.Column("Product Name", SqlType.text()),
-            TableDefinition.Column("Category", SqlType.text())
-        ]
-    )
-    table_definitions = [table_one, table_two]
-    return table_definitions
-
+        # Create the datasource object with the project_id
+        datasource = TSC.DatasourceItem(project_id)
+        
+        print(f"Publishing {path_to_database} to {project_name}...")
+        # Publish datasource
+        datasource = server.datasources.publish(datasource, path_to_database, publish_mode)
+        print("Datasource published. Datasource ID: {0}".format(datasource.id))
 
 def load_config():
-    '''Loads a config file in the current directory called config.json.'''
-    
+    """
+    Loads a config file in the current directory called config.json.
+    """
     # Opens the config file and loads as a dictionary.    
     try:
         with open('config.json', 'r') as f:
@@ -67,103 +127,8 @@ def load_config():
         sys.exit(message)
 
 
-def add_to_hyper(table_data, table_definitions, hyper_name):
-    '''Uses the Hyper API to build and insert data into the Hyper file.'''
-
-    # Starts the Hyper Process with telemetry enabled to send data to Tableau.
-    # To opt out, simply set telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU.   
-    print("Starting Hyper process.")
-    with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU) as hyper:
-
-        # Creates new Hyper file "[hyper_name].hyper".
-        # Replaces file with CreateMode.CREATE_AND_REPLACE if it already exists.
-        print("Opening connection to Hyper file.")
-        with Connection(endpoint=hyper.endpoint, database=hyper_name, create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
-            
-            # Creates multiple tables.
-            for data, definition in zip(table_data, table_definitions):
-                connection.catalog.create_table(definition)
-                print(f"Creating table {definition.table_name} in Hyper...")
-                
-                # Inserts data into table.
-                with Inserter(connection, definition) as inserter:
-                    print(f"Instering {len(data)} rows into table {definition.table_name}...")
-                    inserter.add_rows(data)
-                    inserter.execute()
-
-        print("The connection to the Hyper file has been closed.")
-    print("The Hyper process has been shut down.")
-
-
-def swap_hyper(hyper_name, tdsx_name, logger_obj=None):
-    '''Uses tableau_tools to open a local .tdsx file and replace the hyperfile.'''
-    
-    # Checks to see if TDSX exists, otherwise, as a one-time step, user will need to create using Desktop.
-    if os.path.exists(tdsx_name):
-        print("Found TDSX file.")
-    else:
-        message = "--Could not find existing TDSX file. Please use Desktop to create one from the newly created hyper file or update the config file.--"
-        sys.exit(message)
-    
-    # Uses tableau_tools to replace the hyper file in the TDSX.
-    try:
-        local_tds = TableauFileManager.open(filename=tdsx_name, logger_obj=logger_obj)
-    except TableauException as e:
-        sys.exit(e)
-    filenames = local_tds.get_filenames_in_package()
-    for filename in filenames:
-        if filename.find('.hyper') != -1:
-            print("Overwritting Hyper in original TDSX...")
-            local_tds.set_file_for_replacement(filename_in_package=filename,
-                                            replacement_filname_on_disk=hyper_name)
-            break
-    
-    # Overwrites the original TDSX file locally.
-    tdsx_name_before_extension, tdsx_name_extension = os.path.splitext(tdsx_name)
-    tdsx_updated_name = tdsx_name_before_extension + '_updated' + tdsx_name_extension
-    local_tds.save_new_file(new_filename_no_extension=tdsx_updated_name)
-    os.remove(tdsx_name)
-    os.rename(tdsx_updated_name, tdsx_name)
-
-
-def publish_to_server(site_name, server_address, project_name, tdsx_name, tableau_token_name, tableau_token):
-    '''Publishes updated, local .tdsx to Tableau, overwriting the original file.'''
-    
-    # Creates the auth object based on the config file.
-    tableau_auth = TSC.PersonalAccessTokenAuth(
-        token_name=tableau_token_name, personal_access_token=tableau_token, site_id=site_name)
-    server = TSC.Server(server_address)
-    print(f"Signing into to site: {site_name}.")
-
-    # Signs in and find the specified project.
-    with server.auth.sign_in(tableau_auth):
-        all_projects, pagination_item = server.projects.get()
-        for project in TSC.Pager(server.projects):
-            if project.name == project_name:
-                project_id = project.id
-        if project_id == None:
-            message = "Could not find project. Please update the config file."
-            sys.exit(message)
-        print(f"Publishing to {project_name}.")
-        
-        # Publishes the data source.
-        overwrite_true = TSC.Server.PublishMode.Overwrite
-        datasource = TSC.DatasourceItem(project_id)
-        file_path = os.path.join(os.getcwd(), tdsx_name)
-        datasource = server.datasources.publish(
-            datasource, file_path, overwrite_true)
-        print(f"Publishing of datasource '{tdsx_name}' complete.")
-
-
-# Run
 if __name__ == '__main__':
-    config = load_config() 
-    
-    try:
-        add_to_hyper(get_data(), build_tables(), config['hyper_name'])
-    except HyperException as e:
-        sys.exit(e)
-
-    swap_hyper(config['hyper_name'], config['tdsx_name'])
-    publish_to_server(config['site_name'], config['server_address'], config['project_name'],
-        config['tdsx_name'], config['tableau_token_name'], config['tableau_token'])
+    config = load_config()
+    path_to_database = Path(config['hyper_name'])
+    create_hyper_file_and_insert_data(path_to_database)
+    publish_hyper(config['tableau_token_name'], config['tableau_token'], config['site_name'], config['server_address'], config['project_name'], path_to_database)
