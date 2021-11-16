@@ -1,5 +1,6 @@
 {
-    "hyper_name": "data.hyper",
+    "hyper_name": "extract.hyper",
+    "tdsx_name": "test.tdsx",
     "server_address": "my.tableau.server",
     "site_name": "my_site",
     "project_name": "my_project",
