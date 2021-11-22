@@ -195,10 +195,10 @@ def tempfile_name(prefix: str = "", suffix: str = "") -> str:
 
 class BaseExtractor(ABC):
     """
-    Abstract Base Class defining the standard Extractor Interface
+    Abstract Base Class defining the standard Extractor Interface.
 
     Authentication to Tableau Server can be either by Personal Access Token or
-     Username and Password.
+    Username and Password.
 
     Constructor Args:
     - source_database_config (dict): Source database parameters
@@ -250,8 +250,9 @@ class BaseExtractor(ABC):
     @property
     def sql_identifier_quote(self):
         """
-        Property defines how table identifiers etc. are quoted when SQL is generated
-        Default is ` - i.e. `myschema.mytable`
+        Property defines how table identifiers etc. are quoted when SQL is generated.
+
+        Default quote character is ` - i.e. `myschema.mytable`
         """
         return self.__sql_identifier_quote
 
@@ -260,13 +261,7 @@ class BaseExtractor(ABC):
         self.__sql_identifier_quote = new_char
 
     def quoted_sql_identifier(self, sql_identifier: str) -> str:
-        """
-        Parse a SQL Identifier (e.g. Table Name, Column Name) and returns
-        escaped and quoted version ()
-
-        Replace this with your database connector mechanism if one is defined
-        """
-
+        """Parse a SQL Identifier (e.g. Table/Column Name) and return escaped and quoted version."""
         sql_identifier = sql_identifier.strip()
 
         if sql_identifier is None:
@@ -288,14 +283,12 @@ class BaseExtractor(ABC):
 
     @abstractmethod
     def source_database_cursor(self) -> Any:
-        """
-        Returns a DBAPI Cursor to the source database
-        """
+        """Return a DBAPI Cursor to the source database."""
 
     @abstractmethod
     def hyper_sql_type(self, source_column: Any) -> SqlType:
         """
-        Finds the corresponding Hyper column type for source_column
+        Find the corresponding Hyper column type for source_column.
 
         source_column (obj): Source column descriptor (e.g. DBAPI Column description tuple)
 
@@ -305,7 +298,7 @@ class BaseExtractor(ABC):
     @abstractmethod
     def hyper_table_definition(self, source_table: Any, hyper_table_name: str = "Extract") -> TableDefinition:
         """
-        Build a hyper table definition from source_table
+        Build a hyper table definition from source_table.
 
         source_table (obj): Source table or query resultset descriptor
         hyper_table_name (string): Name of the target Hyper table, default="Extract"
@@ -315,7 +308,8 @@ class BaseExtractor(ABC):
 
     def _datasource_lock(self, tab_ds_name: str) -> FileLock:
         """
-        Returns a posix lock for the named datasource.
+        Return a posix lock for the named datasource.
+
         NOTE: Exclusive lock is not actually acquired until you call "with lock:" or "lock.acquire():
         e.g.
             lock=self._datasource_lock(tab_ds_name)
@@ -327,9 +321,7 @@ class BaseExtractor(ABC):
         return FileLock(lock_path, timeout=DATASOURCE_LOCK_TIMEOUT)
 
     def _get_project_id(self, tab_project: str) -> str:
-        """
-        Return project_id for tab_project
-        """
+        """Return project_id for tab_project."""
         all_projects, pagination_item = self.tableau_server.projects.get()
 
         for project in all_projects:
@@ -340,9 +332,7 @@ class BaseExtractor(ABC):
         raise TableauResourceNotFoundError("No project found for:{}".format(tab_project))
 
     def _get_datasource_by_name(self, tab_datasource: str) -> str:
-        """
-        Return datasource object with name=tab_datasource.
-        """
+        """Return datasource object with name=tab_datasource."""
         # Get project_id from project_name
 
         all_datasources, pagination_item = self.tableau_server.datasources.get()
@@ -361,6 +351,7 @@ class BaseExtractor(ABC):
     ) -> Path:
         """
         Write query output to a Hyper file.
+
         Returns Path to hyper file
 
         target_table_def (TableDefinition): Schema for target extract table
@@ -404,9 +395,11 @@ class BaseExtractor(ABC):
                 connection.catalog.create_table(table_definition=target_table_def)
                 with Inserter(connection, target_table_def) as inserter:
                     if query_result_iter is not None:
+                        assert cursor is None
                         inserter.add_rows(query_result_iter)
                         inserter.execute()
                     else:
+                        assert cursor is not None
                         if rows:
                             # We have rows in the buffer from where we determined the cursor.description for server side cursor
                             inserter.add_rows(rows)
@@ -432,7 +425,8 @@ class BaseExtractor(ABC):
         csv_format_options: str = """NULL 'NULL', delimiter ',', header FALSE""",
     ) -> Path:
         """
-        Writes csv to a Hyper files
+        Write csv to a Hyper file.
+
         Returns Path to hyper file
 
         path_to_csv (str): CSV file containing result rows
@@ -440,7 +434,6 @@ class BaseExtractor(ABC):
         csv_format_options (str): Specify csv file format options for COPY command
             default csv format options: "NULL 'NULL', delimiter ',', header FALSE"
         """
-
         path_to_database = Path(tempfile_name(prefix="temp_", suffix=".hyper"))
         with HyperProcess(telemetry=TELEMETRY) as hyper:
             with Connection(
@@ -468,7 +461,7 @@ class BaseExtractor(ABC):
         publish_mode: TSC.Server.PublishMode = TSC.Server.PublishMode.CreateNew,
     ) -> str:
         """
-        Publishes a Hyper file to Tableau Server
+        Publish a Hyper file to Tableau Server.
 
         path_to_database (string): Hyper file to publish
         tab_ds_name (string): Target datasource name
@@ -499,7 +492,7 @@ class BaseExtractor(ABC):
         action: str = "UPDATE",
     ):
         """
-        Updates a datasource on Tableau Server with a changeset from a hyper file
+        Update a datasource on Tableau Server with a changeset from a hyper file.
 
         path_to_database (string): The hyper file containing the changeset
         tab_ds_name (string): Target Tableau datasource
@@ -514,7 +507,6 @@ class BaseExtractor(ABC):
             (e.g. json_request="condition": { "op": "<", "target-col": "col1", "const": {"type": "datetime", "v": "2020-06-00"}})
         - When action is DELETE, it is an error if the source table contains any additional columns not referenced by the condition. Those columns are pointless and we want to let the user know, so they can fix their scripts accordingly.
         """
-
         action = action.upper()
         match_conditions_args = []
         if match_columns is not None:
@@ -564,18 +556,15 @@ class BaseExtractor(ABC):
                     },
                 ]
         elif action == "INSERT":
-            actions_json = {
-                "actions": [
-                    # INSERT action
-                    {
-                        "action": "insert",
-                        "source-schema": "Extract",
-                        "source-table": changeset_table_name,
-                        "target-schema": "Extract",
-                        "target-table": "Extract",
-                    },
-                ]
-            }
+            actions_json = [
+                {
+                    "action": "insert",
+                    "source-schema": "Extract",
+                    "source-table": changeset_table_name,
+                    "target-schema": "Extract",
+                    "target-table": "Extract",
+                },
+            ]
         else:
             raise Exception("Unknown action {} specified for _update_datasource_from_hyper_file".format(action))
 
@@ -583,7 +572,7 @@ class BaseExtractor(ABC):
         lock = self._datasource_lock(tab_ds_name)
         with lock:
             request_id = str(uuid.uuid4())
-            async_job = self.tableau_server.datasources.update_data(
+            async_job = self.tableau_server.datasources.update_hyper_data(
                 datasource_or_connection_item=this_datasource, request_id=request_id, actions=actions_json, payload=path_to_database
             )
             self.tableau_server.jobs.wait_for_job(async_job)
@@ -595,8 +584,9 @@ class BaseExtractor(ABC):
         hyper_table_name: str = "Extract",
     ) -> Generator[Path, None, None]:
         """
-        Executes sql_query or exports rows from source_table and writes output
-        to one or more hyper files.  This base implementation uses the standard
+        Execute sql_query or export rows from source_table and write output to one or more hyper files.
+
+        This base implementation uses the standard
         DBAPIv2 cursor methods and this should be overwritten if your native
         database client libraries include more efficient export etc. routines.
 
@@ -643,7 +633,6 @@ class BaseExtractor(ABC):
         NOTES:
         - Specify either sql_query OR source_table, error if both specified
         """
-
         if not (bool(sql_query) ^ bool(source_table)):
             raise Exception("Must specify either sql_query OR source_table")
 
@@ -652,6 +641,7 @@ class BaseExtractor(ABC):
         if sql_query:
             sql_query = "{} LIMIT {}".format(sql_query, sample_rows)
         else:
+            assert source_table is not None
             sql_query = "SELECT * FROM {} LIMIT {}".format(self.quoted_sql_identifier(source_table), sample_rows)
         first_chunk = True
         for path_to_database in self.query_to_hyper_files(sql_query=sql_query):
@@ -675,7 +665,7 @@ class BaseExtractor(ABC):
         publish_mode: TSC.Server.PublishMode = TSC.Server.PublishMode.CreateNew,
     ) -> None:
         """
-        Bulk export the contents of source_table and load to Tableau Server
+        Bulk export the contents of source_table and load to Tableau Server.
 
         tab_ds_name (string): Target datasource name
         source_table (string): Source table identifier
@@ -685,7 +675,6 @@ class BaseExtractor(ABC):
         NOTES:
         - Specify either sql_query OR source_table, error if both specified
         """
-
         first_chunk = True
         for path_to_database in self.query_to_hyper_files(source_table=source_table, sql_query=sql_query):
             if first_chunk:
@@ -708,7 +697,7 @@ class BaseExtractor(ABC):
         changeset_table_name: str = "new_rows",
     ) -> None:
         """
-        Appends the result of sql_query to a datasource on Tableau Server
+        Append the result of sql_query to a datasource on Tableau Server.
 
         tab_ds_name (string): Target datasource name
         sql_query (string): The query string that generates the changeset
@@ -719,7 +708,6 @@ class BaseExtractor(ABC):
         NOTES:
         - Must specify either sql_query OR source_table, error if both specified
         """
-
         if not (bool(sql_query) ^ bool(source_table)):
             raise Exception("Must specify either sql_query OR source_table")
 
@@ -747,7 +735,7 @@ class BaseExtractor(ABC):
         changeset_table_name: str = "updated_rows",
     ) -> None:
         """
-        Updates a datasource on Tableau Server with the changeset from sql_query
+        Update a datasource on Tableau Server with the changeset from sql_query.
 
         tab_ds_name (string): Target datasource name
         sql_query (string): The query string that generates the changeset
@@ -762,7 +750,6 @@ class BaseExtractor(ABC):
         - Specify either match_columns OR match_conditions_json, error if both specified
         - Specify either sql_query OR source_table, error if both specified
         """
-
         if not ((match_columns is None) ^ (match_conditions_json is None)):
             raise Exception("Must specify either match_columns OR match_conditions_json")
         if not ((sql_query is None) ^ (source_table is None)):
@@ -794,8 +781,9 @@ class BaseExtractor(ABC):
         changeset_table_name: str = "deleted_rowids",
     ) -> None:
         """
-        Delete rows matching the changeset from sql_query from a datasource on Tableau Server
-        Simple delete by condition when sql_query is None
+        Delete rows from a datasource on Tableau Server.
+
+        Delete rows matching the changeset from sql_query or simple delete by condition when sql_query is None
 
         tab_ds_name (string): Target datasource name
         sql_query (string): The query string that generates the changeset
