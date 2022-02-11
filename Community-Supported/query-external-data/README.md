@@ -14,7 +14,7 @@ To run the script, you will need:
 
 - a computer running Windows, macOS, or Linux
 
-- Python 3.6 or 3.7
+- Python 3.7 or newer
 
 ## Run the sample
 

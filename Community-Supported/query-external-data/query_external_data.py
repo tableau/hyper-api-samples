@@ -55,7 +55,7 @@ def run_hyper_query_external():
          
             print("\nScenario 2: Query multiple external data sources in one query.")
             # This query reads data from a parquet and a CSV file and joins it. Note that, for CSV files, the schema of the file
-            # has to be provided and currently cannot be inferred form the file directly.
+            # has to be provided and currently cannot be inferred form the file directly (see the `DESCRIPTOR` argument below).
             command_2 = """SELECT l_partkey, SUM(l_quantity) 
                            FROM external('orders_10rows.parquet') 
                                join external('lineitem.csv',
@@ -72,6 +72,7 @@ def run_hyper_query_external():
            
             print("Scenario 3: Query multiple CSV files that have the same schema in one go.")
             # Note that, for CSV files, the schema of the file has to be provided and currently cannot be inferred form the file directly.
+            # (see the `DESCRIPTOR` argument below).
             command_3 = """SELECT * 
                            FROM external(ARRAY['lineitem.csv','lineitem_2.csv'],
                                          COLUMNS => DESCRIPTOR(l_orderkey int, l_partkey int, l_suppkey int, l_linenumber int, l_quantity float,
