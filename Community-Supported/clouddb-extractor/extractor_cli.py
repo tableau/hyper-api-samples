@@ -125,7 +125,7 @@ def _get_int_from_arg(this_str, arg_name, is_required=False):
 def main():
     """Command line utility for clouddb_extractor."""
     # Load defaults
-    config = yaml.safe_load(open("config.yml"))
+    config = yaml.safe_load(open(CONFIGURATION_FILE))
 
     # Define Command Line Args
     parser = argparse.ArgumentParser(
