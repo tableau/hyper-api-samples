@@ -31,9 +31,6 @@ in the Python Standard Library.
    
    **python query_external_data.py**
 
-   It will read the `orders_10rows.parquet` file from the working directory and create a new Hyper database
-   named `orders.hyper` with a table named "orders", which will contain the 10 rows copied from the Parquet file.
-
 ## __Resources__
 Check out these resources to learn more:
 

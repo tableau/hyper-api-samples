@@ -37,15 +37,15 @@ def run_hyper_query_external():
                         database="output_file.hyper",
                         create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
 
-            print("Scenario 1: Create a table from filtered parquet data with a calcualted extra column")
+            print("Scenario 1: Create a table from filtered parquet data with a calculated extra column")
             # This SQL command queries a parquet file directly and creates the table 'low_prio_orders' in Hyper.
             # The created table contains the data that is returned from the 'SELECT' part of the query. I.e., only
             # a selection of columns, a new calculated column 'clerk_nr' and only the rows with low order priority.
             command_1 = """CREATE TABLE low_prio_orders AS 
-                              SELECT o_orderkey, o_custkey, o_totalprice, CAST(SUBSTRING(o_clerk from 7) AS int) as clerk_nr
-                              FROM external('orders_10rows.parquet') 
-                              WHERE o_orderpriority = '5-LOW'"""
-                            
+                           SELECT o_orderkey, o_custkey, o_totalprice, CAST(SUBSTRING(o_clerk from 7) AS int) as clerk_nr
+                           FROM external('orders_10rows.parquet') 
+                           WHERE o_orderpriority = '5-LOW'"""
+
             connection.execute_command(command_1)
             
             print("table content:")
@@ -87,9 +87,4 @@ def run_hyper_query_external():
 
 
 if __name__ == '__main__':
-    try:
-        run_hyper_query_external()
-
-    except HyperException as ex:
-        print(ex)
-        exit(1)
+    run_hyper_query_external()
