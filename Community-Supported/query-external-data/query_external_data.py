@@ -40,31 +40,28 @@ def run_hyper_query_external():
             print("Scenario 1: Create a table from filtered parquet data with a calculated extra column")
             # This SQL command queries a parquet file directly and creates the table 'low_prio_orders' in Hyper.
             # The created table contains the data that is returned from the 'SELECT' part of the query. I.e., only
-            # a selection of columns, a new calculated column 'clerk_nr' and only the rows with low order priority.
+            # a selection of columns, a new calculated column 'employee_nr' and only the rows with low order priority.
             command_1 = """CREATE TABLE low_prio_orders AS 
-                           SELECT o_orderkey, o_custkey, o_totalprice, CAST(SUBSTRING(o_clerk from 7) AS int) as clerk_nr
-                           FROM external('orders_10rows.parquet') 
-                           WHERE o_orderpriority = '5-LOW'"""
+                           SELECT order_key, customer_key, price, CAST(SUBSTRING(employee from 0 for 6) AS int) as employee_nr
+                           FROM external('orders.parquet') 
+                           WHERE priority = 'LOW'"""
 
             connection.execute_command(command_1)
             
             print("table content:")
             print_list(connection.execute_list_query("SELECT * FROM low_prio_orders"))
             print()
-                
-         
+
             print("\nScenario 2: Query multiple external data sources in one query.")
             # This query reads data from a parquet and a CSV file and joins it. Note that, for CSV files, the schema of the file
             # has to be provided and currently cannot be inferred form the file directly (see the `DESCRIPTOR` argument below).
-            command_2 = """SELECT l_partkey, SUM(l_quantity) 
-                           FROM external('orders_10rows.parquet') 
-                               join external('lineitem.csv',
-                                      COLUMNS => DESCRIPTOR(l_orderkey int, l_partkey int, l_suppkey int, l_linenumber int, l_quantity float,
-                                                l_returnflag text, l_linestatus text, l_shipdate date, l_commitdate date, l_receiptdate date,
-                                                l_shipinstruct text, l_shipmode text, l_comment text),
-                                      DELIMITER => ',', FORMAT => 'csv', HEADER => false)
-                                on o_orderkey = l_orderkey GROUP BY l_partkey 
-                           ORDER BY l_partkey"""
+            command_2 = """SELECT country, SUM(quantity * price) 
+                           FROM external('orders.parquet') orders
+                               join external('customers.csv',
+                                      COLUMNS => DESCRIPTOR(customer_key int, country text, street text, nr int),
+                                      DELIMITER => ',', FORMAT => 'csv', HEADER => false) customers
+                                on orders.customer_key = customers.customer_key GROUP BY country 
+                           ORDER BY country"""
             print("result:")
             print_list(connection.execute_list_query(command_2))
             print()
@@ -74,12 +71,10 @@ def run_hyper_query_external():
             # Note that, for CSV files, the schema of the file has to be provided and currently cannot be inferred form the file directly.
             # (see the `DESCRIPTOR` argument below).
             command_3 = """SELECT * 
-                           FROM external(ARRAY['lineitem.csv','lineitem_2.csv'],
-                                         COLUMNS => DESCRIPTOR(l_orderkey int, l_partkey int, l_suppkey int, l_linenumber int, l_quantity float,
-                                                               l_returnflag text, l_linestatus text, l_shipdate date, l_commitdate date, l_receiptdate date,
-                                                               l_shipinstruct text, l_shipmode text, l_comment text),
+                           FROM external(ARRAY['customers.csv','customers.csv'],
+                                         COLUMNS => DESCRIPTOR(customer_key int, country text, street text, nr int),
                                          DELIMITER => ',', FORMAT => 'csv', HEADER => false)
-                           ORDER BY l_orderkey"""
+                           ORDER BY country"""
                            
             print("result:")
             print_list(connection.execute_list_query(command_3))
