@@ -34,13 +34,9 @@ def run_create_hyper_file_from_parquet(
 
     # Start the Hyper process.
     #
-    # * Since `FORMAT parquet` is an experimental feature, it must be explicitly enabled on startup.
-    #   See also the "Experimental Settings" section in the Tableau Hyper documentation:
-    #   https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/experimentalsettings.html
     # * Sending telemetry data to Tableau is encouraged when trying out an experimental feature.
     #   To opt out, simply set `telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU` below.
-    with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU,
-                      parameters={"experimental_external_format_parquet": "1"}) as hyper:
+    with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU) as hyper:
 
         # Open a connection to the Hyper process. This will also create the new Hyper file.
         # The `CREATE_AND_REPLACE` mode causes the file to be replaced if it
