@@ -14,6 +14,7 @@ This sample demonstrates how to, with little modification, leverage the Hyper AP
 
 It should serve as a starting point for anyone looking to automate the publishing process of datasources based on contents of S3 buckets. The advantage of leveraging this sample is that an end user should not need to open the Python script, instead simply edit the configuration file and the code handles the rest automatically.
 
+**Note:** As an alternative to using Boto3, you can also check out if [Hyper's Native S3 capabilities](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/native-s3/README.md) are applicable to your use-case to ingest data from AWS S3 into Hyper.
 
 # Get started
 
