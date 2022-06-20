@@ -2,6 +2,10 @@ from tableauhyperapi import HyperProcess, Connection, Telemetry, TableDefinition
 from opensky_api import OpenSkyApi
 import tableauserverclient as TSC
 import uuid
+import argparse
+from pathlib import PurePath
+
+from tomlkit import string
 
 def create_hyper_database_with_flights_data(database_path):
     """
@@ -82,6 +86,7 @@ def publish_to_server(server_url, tableau_auth, project_name, database_path, dat
             request_id = str(uuid.uuid4())
 
             # Create one action that inserts from the new table into the existing table.
+            # For more details, see https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_how_to_update_data_to_hyper.htm#action-batch-descriptions
             actions = [
                 {
                     "action": "insert",
@@ -102,17 +107,20 @@ def publish_to_server(server_url, tableau_auth, project_name, database_path, dat
        
         
 if __name__ == '__main__':
+    argparser = argparse.ArgumentParser(description="Incremental refresh with flights data.")
+    argparser.add_argument("server_url", type=string, help="The url of Tableau Server / Cloud, e.g. 'https://us-west-2a.online.tableau.com'")
+    argparser.add_argument("site_name", type=string, help="The name of your site, e.g., use 'default' for your default site. Note that you cannot use 'default' in Tableau Cloud but must use the site name.", default='default')
+    argparser.add_argument("project_name", type=string, help="The name of your project, e.g., use an empty string ('') for your default project.", default="")
+    argparser.add_argument("token_name", type=string, help="The name of your authentication token for Tableau Server/Cloud. See this url for more details: https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm")
+    argparser.add_argument("token_value", type=string, help="The value of your authentication token for Tableau Server/Cloud. See this url for more details: https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm")
+    args = argparser.parse_args()
+
     # First create the hyper database with flights data.
     database_path = "flights.hyper"
     create_hyper_database_with_flights_data(database_path)
 
     # Then publish the data to server.
-    server_url = ''
-    site_name = ''
-    project_name = ''
-    token_name = ''
-    token_value = ''
     datasource_name_on_server = 'flights_data_set'
     # Create credentials to sign into Tableau Server.
-    tableau_auth = TSC.PersonalAccessTokenAuth(token_name, token_value, site_name)
-    publish_to_server(server_url, tableau_auth, project_name, database_path, datasource_name_on_server)
+    tableau_auth = TSC.PersonalAccessTokenAuth(args.token_name, args.token_value, args.site_name)
+    publish_to_server(args.server_url, tableau_auth, args.project_name, database_path, datasource_name_on_server)

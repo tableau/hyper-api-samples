@@ -5,7 +5,7 @@
 
 This sample is based on the content the Hyper team presented in the Hands on Training session "Hands-on: Leverage the Hyper Update API and Hyper API to Keep Your Data Fresh on Tableau Server" at Tableau Conference 2022 ([slides available here](https://mkt.tableau.com/tc22/sessions/live/430-HOT-D1_Hands-onLeverageTheHyperUpdate.pdf)).
 
-It demonstrates how to implement an incremental refresh based on the Hyper API and the [Hyper Update API](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_how_to_update_data_to_hyper.htm). It showcases this based on fligths data from the [OpenSkyAPI](https://github.com/openskynetwork/opensky-api). The sample should serve as a starting point for anyone looking to incrementally publish and update datasources on Tableau Server/Cloud. 
+This script pulls down flights data from the [OpenSkyAPI](https://github.com/openskynetwork/opensky-api), creates a hyper database with this data and uses the [Hyper Update API](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_how_to_update_data_to_hyper.htm) to implement an incremental refresh on your Tableau Server/Cloud. The first time this script is executed, the database file is simply published. 
 
 # Get started
 
@@ -18,11 +18,15 @@ To run the script, you will need:
 - Tableau Server Credentials
 
 ## Tableau Server Credentials
-To run this sample with your Tableau Server/Cloud, you first need to get the following information and copy it into the respective variables at the end of the script:
+To run this sample with your Tableau Server/Cloud, you first need to get the following information:
 - Tableau Server Url, e.g. 'https://us-west-2a.online.tableau.com'
-- Site name, e.g., use 'default' for your default site
+- Site name, e.g., use 'default' for your default site (note that you cannot use 'default' in Tableau Cloud but must use the site name)
 - Project name, e.g., use an empty string ('') for your default project 
 - [Token Name and Token Value](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm) 
+
+Ensure that you have installed the requirements and then just run the sample Python file with the information from above. The syntax for running the script is:
+   
+   **python flights-data-incremental-refresh.py [-h] server_url site_name project_name token_name token_value**
 
 # Incremental Refresh using the OpenSkyApi
 The script consists of two parts: first it creates a Hyper database with flights data and then publishes the database to Tableau Server/Cloud.
