@@ -3,9 +3,6 @@ from opensky_api import OpenSkyApi
 import tableauserverclient as TSC
 import uuid
 import argparse
-from pathlib import PurePath
-
-from tomlkit import string
 
 def create_hyper_database_with_flights_data(database_path):
     """
@@ -108,11 +105,11 @@ def publish_to_server(server_url, tableau_auth, project_name, database_path, dat
         
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(description="Incremental refresh with flights data.")
-    argparser.add_argument("server_url", type=string, help="The url of Tableau Server / Cloud, e.g. 'https://us-west-2a.online.tableau.com'")
-    argparser.add_argument("site_name", type=string, help="The name of your site, e.g., use 'default' for your default site. Note that you cannot use 'default' in Tableau Cloud but must use the site name.", default='default')
-    argparser.add_argument("project_name", type=string, help="The name of your project, e.g., use an empty string ('') for your default project.", default="")
-    argparser.add_argument("token_name", type=string, help="The name of your authentication token for Tableau Server/Cloud. See this url for more details: https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm")
-    argparser.add_argument("token_value", type=string, help="The value of your authentication token for Tableau Server/Cloud. See this url for more details: https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm")
+    argparser.add_argument("server_url", help="The url of Tableau Server / Cloud, e.g. 'https://us-west-2a.online.tableau.com'")
+    argparser.add_argument("site_name", help="The name of your site, e.g., use 'default' for your default site. Note that you cannot use 'default' in Tableau Cloud but must use the site name.", default='default')
+    argparser.add_argument("project_name", help="The name of your project, e.g., use an empty string ('') for your default project.", default="")
+    argparser.add_argument("token_name", help="The name of your authentication token for Tableau Server/Cloud. See this url for more details: https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm")
+    argparser.add_argument("token_value", help="The value of your authentication token for Tableau Server/Cloud. See this url for more details: https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm")
     args = argparser.parse_args()
 
     # First create the hyper database with flights data.

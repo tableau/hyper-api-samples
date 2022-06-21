@@ -14,8 +14,7 @@ To run the script, you will need:
 - Windows, Linux, or Mac
 - Python 3
 - Run `pip install -r requirements.txt`
-- Additionally, you need to install the Python OpenSkyApi. You have to manually install it via `pip install https://github.com/openskynetwork/opensky-api/archive/master.zip#subdirectory=python`
-- Tableau Server Credentials
+- Tableau Server Credentials, see below. 
 
 ## Tableau Server Credentials
 To run this sample with your Tableau Server/Cloud, you first need to get the following information:
