@@ -19,7 +19,7 @@ from tableauhyperapi import HyperProcess, Telemetry, \
     TableName, \
     HyperException
 
-# An example of how to turn a .hyper file into a csv to fit within potiential ETL workflows.
+# An example of how to turn a .hyper file into a csv to fit within potential ETL workflows.
 
 """
 Note: you need to follow the pantab documentation to make sure columns line up with the
