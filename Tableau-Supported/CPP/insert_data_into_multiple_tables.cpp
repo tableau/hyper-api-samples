@@ -1,14 +1,3 @@
-// -----------------------------------------------------------------------------
-//
-// This file is the copyrighted property of Tableau Software and is protected
-// by registered patents and other applicable U.S. and international laws and
-// regulations.
-//
-// You may adapt this file and modify it to fit into your context and use it
-// as a template to start your own projects.
-//
-// -----------------------------------------------------------------------------
-
 /**
  * \example insert_data_into_multiple_tables.cpp
  *
