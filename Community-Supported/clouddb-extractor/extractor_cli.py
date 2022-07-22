@@ -30,6 +30,7 @@ EXTRACTORS = {
     "redshift": "redshift_extractor.RedshiftExtractor",
     "mysql": "mysql_extractor.MySQLExtractor",
     "postgres": "postgres_extractor.PostgresExtractor",
+    "azuresql": "azuresql_extractor.AzureSQLExtractor",
 }
 CONFIGURATION_FILE = "config.yml"
 

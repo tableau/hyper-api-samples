@@ -22,6 +22,15 @@ mysql: #Mysql configuration defaults
     username : "test"
     password : "password"
     raise_on_warnings : True
+azuresql: #Azure SQL Database configuration defaults
+  connection:
+    host : "mydbserver.test"
+    port : 1433
+    database : "test"
+    username : "test"
+    password : "password"
+    connect_str_suffix : "Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30"
+    raise_on_warnings : True
 redshift: #Redshift configuration defaults
   connection:
     host : 'redshift-cluster-1.XXX.eu-west-1.redshift.amazonaws.com'
