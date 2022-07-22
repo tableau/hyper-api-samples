@@ -5,7 +5,7 @@
 
 __Current Version__: 1.0
 
-These samples show you how Hyper can natively interact with Amazon S3, or S3 compatible services, without the need to install any external dependencies like boto or aws-cli.
+These samples show you how Hyper can natively interact with Amazon S3, without the need to install any external dependencies like boto or aws-cli.
 They originate from the Tableau Conference 2022 Hands-on Training Use Hyper as your Cloud Lake Engine - you can [check out the slides here](https://mkt.tableau.com/tc22/sessions/live/428-HOT-D1_Hands-onUseTheHyperAPI.pdf).
 
 # Get started
@@ -59,15 +59,6 @@ $ python join-parquet-and-csv-on-s3.py
 ```
 
 This script will perform a live query on multiple `.parquet` files which are stored on AWS S3. It shows how to use the [`ARRAY` syntax](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/functions-srf.html#FUNCTIONS-SRF-EXTERNAL) to union multiple `.parquet` files and how `.parquet` files can be joined together with `.csv` files - as you would expect from normal database tables stored inside a `.hyper` file.
-
-**Live query against a `.parquet` file which is stored on Google Storage**  
-
-Run the Python script
-
-```bash
-$ python query-parquet-on-gs.py 
-```
-This script will perform a live query on the Parquet file which is stored in this public Google Storage bucket: `gs://cloud-samples-data/bigquery/us-states/us-states.parquet`.
 
 ## __Resources__
 Check out these resources to learn more:
