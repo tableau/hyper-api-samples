@@ -6,7 +6,7 @@
 
 __Current Version__: 1.0
 
-These samples show you how Hyper can natively interact with S3 compatible services, without the need to install any external dependencies like `google-cloud-bigquery`.
+These samples show you how Hyper can natively interact with S3 compatible services, such as Google Storage, without the need to install any external dependencies like `google-cloud-bigquery`.
 
 # Get started
 

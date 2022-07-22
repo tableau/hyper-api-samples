@@ -36,7 +36,7 @@ The community samples focus on individual use cases and are Python-only. They ha
     It demonstrates how to implement an incremental refresh based on the Hyper API and the [Hyper Update API](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_how_to_update_data_to_hyper.htm). It showcases this based on fligths data from the [OpenSkyAPI](https://github.com/openskynetwork/opensky-api). 
 
 - [__s3-compatible-services__](https://github.com/aetperf/hyper-api-samples/tree/main/Community-Supported/s3-compatible-services)
-  - Demonstrates how Hyper can natively interact with S3 compatible services, without the need to install any external dependencies like `google-cloud-bigquery`.
+  - Demonstrates how Hyper can natively interact with S3 compatible services, such as Google Storage, without the need to install any external dependencies like `google-cloud-bigquery`.
 
 </br>
 </br>
