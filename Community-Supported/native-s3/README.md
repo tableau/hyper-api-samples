@@ -60,14 +60,13 @@ $ python join-parquet-and-csv-on-s3.py
 
 This script will perform a live query on multiple `.parquet` files which are stored on AWS S3. It shows how to use the [`ARRAY` syntax](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/functions-srf.html#FUNCTIONS-SRF-EXTERNAL) to union multiple `.parquet` files and how `.parquet` files can be joined together with `.csv` files - as you would expect from normal database tables stored inside a `.hyper` file.
 
-**Live query against a `.parquet` file which is stored on Google Storage**
+**Live query against a `.parquet` file which is stored on Google Storage**  
+
 Run the Python script
 
 ```bash
 $ python query-parquet-on-gs.py 
 ```
-	number of rows : 50
-
 This script will perform a live query on the Parquet file which is stored in this public Google Storage bucket: `gs://cloud-samples-data/bigquery/us-states/us-states.parquet`.
 
 ## __Resources__
