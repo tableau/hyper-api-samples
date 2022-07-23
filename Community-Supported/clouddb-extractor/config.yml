@@ -20,6 +20,9 @@ mysql: #Mysql configuration defaults
     database : "dev"
     port : 3306
     username : "test"
+    #Recommended: use key vault instead of password
+    #key_vault_url : "https://<your_keyvault_name>.vault.azure.net"
+    #secret_name : my-password-secret
     password : "password"
     raise_on_warnings : True
 azuresql: #Azure SQL Database configuration defaults

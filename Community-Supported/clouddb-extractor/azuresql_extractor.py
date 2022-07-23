@@ -14,14 +14,8 @@ as a template to start your own projects.
 -----------------------------------------------------------------------------
 """
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
-# Sample Code
-# TODO: Add installation instructions from https://github.com/Azure-Samples/AzureSqlGettingStartedSamples/blob/master/python/Unix-based/Ubuntu_Setup.md
-# TODO: Using pyodbc as this appears to be the most up to date from the following: 
-# TODO: Using ODBC for now - Select one of the following DBAPI v2 compatible libraries: adodbapi, pymssql, mxODBC, pyodbc
-
-# pyodbc source: https://pypi.org/project/pyodbc/#description
 import pyodbc
 from tableauhyperapi import Nullability, SqlType, TableDefinition, TableName
 
@@ -29,10 +23,8 @@ from base_extractor import DEFAULT_SITE_ID, BaseExtractor, HyperSQLTypeMappingEr
 
 logger = logging.getLogger("hyper_samples.extractor.mySQL")
 
-
 class QuerySizeLimitError(Exception):
     pass
-
 
 class AzureSQLExtractor(BaseExtractor):
     """Azure SQL Database Implementation of Extractor Interface
@@ -52,8 +44,6 @@ class AzureSQLExtractor(BaseExtractor):
     NOTE: Authentication to Tableau Server can be either by Personal Access Token or
      Username and Password.  If both are specified then token takes precedence.
     """
-
-    #TODO: This uses an ODBC driver (which may be slow?) so consider adding a bulk export path via csv using bcp (use regular cursor with "select top 0" to determine schema)
 
     def __init__(
         self,
@@ -83,32 +73,37 @@ class AzureSQLExtractor(BaseExtractor):
         """
         Returns a DBAPI Cursor to the source database
         """
+        assert self.source_database_config is not None
         if self._source_database_connection is None:
-            db_connection_args: Dict[str: str] = self.source_database_config.get("connection")
             logger.info("Connecting to source Azure SQL Database Instance...")
 
-            '''TODO: Read password from keyvault instead of storing password in configuration
+            db_connection_args = self.source_database_config.get("connection")
+            assert type(db_connection_args) is dict
+
+            key_vault_url = db_connection_args.get("key_vault_url")
+            secret_name = db_connection_args.get("secret_name")
+            if key_vault_url is not None:
+                #Recommended: Read password from keyvault
                 from azure.identity import DefaultAzureCredential
                 from azure.keyvault.secrets import SecretClient
-
                 credential = DefaultAzureCredential()
+                secret_client = SecretClient(vault_url=key_vault_url, credential=credential)
+                secret = secret_client.get_secret(secret_name)
+                this_password = secret.value
+            else:
+                #Password is stored as plain text
+                this_password = db_connection_args["password"]
 
-                secret_client = SecretClient(vault_url="https://<your_key_vault_name>.vault.azure.net", credential=credential)
-
-                # NOTE: please replace the ("<your-secret-name>") with the name of the secret in your vault
-                secret = secret_client.get_secret("AppSecret")
-                password = secret.value
-            '''
-            connection_str="Driver={{ODBC Driver 17 for SQL Server}};Server={host},{port};Database={database};Uid={username};Pwd={password};{connect_str_suffix}".format(
-                host = db_connection_args["host"],
-                port = db_connection_args["port"],
-                database = db_connection_args["database"],
-                username = db_connection_args["username"],
-                password = db_connection_args["password"],
-                connect_str_suffix = db_connection_args["connect_str_suffix"]
+            connection_str = "Driver={{ODBC Driver 17 for SQL Server}};Server={host},{port};Database={database};Uid={username};Pwd={password};{connect_str_suffix}".format(
+                host=db_connection_args["host"],
+                port=db_connection_args["port"],
+                database=db_connection_args["database"],
+                username=db_connection_args["username"],
+                password=this_password,
+                connect_str_suffix=db_connection_args["connect_str_suffix"]
             )
             self._source_database_connection = pyodbc.connect(connection_str)
-        
+
         return self._source_database_connection.cursor()
 
     def hyper_sql_type(self, source_column: Any) -> SqlType:
@@ -120,57 +115,49 @@ class AzureSQLExtractor(BaseExtractor):
         Returns a tableauhyperapi.SqlType Object
         """
 
-        #Populated this list using: "select system_type_id, name from sys.types;"
-        type_lookup = {                                                                                                                                  
-            #34 image                                                                                                                           
-            35: SqlType.text(), # text                                                                                                                            
-            36: SqlType.text(), # uniqueidentifier                                                                                                                
-            40: SqlType.text(), # date                                                                                                                            
-            41: SqlType.time(), # time                                                                                                                            
-            42: SqlType.timestamp(), # datetime2                                                                                                                       
-            # 43: datetimeoffset                                                                                                                  
-            48: SqlType.small_int(), # tinyint                                                                                                                         
-            52: SqlType.small_int(), # smallint                                                                                                                        
-            56: SqlType.int(), # int                                                                                                                             
-            58: SqlType.timestamp(), # smalldatetime                                                                                                                   
-            59: SqlType.double(), # real                                                                                                                            
-            60: SqlType.numeric(18,3), # money                                                                                                                           
-            61: SqlType.timestamp(), # datetime                                                                                                                        
-            62: SqlType.double(), # float                                                                                                                           
-            #98: sql_variant                                                                                                                     
-            99: SqlType.text(), # ntext                                                                                                                           
-            104: SqlType.bool(), # bit                                                                                                                             
-            106: SqlType.numeric(18, 9), # decimal                                                                                                                         
-            108: SqlType.numeric(18, 9), # numeric                                                                                                                         
-            122: SqlType.numeric(18, 9), # smallmoney                                                                                                                      
-            127: SqlType.big_int(), # bigint                                                                                                                          
-            #240:  hierarchyid                                                                                                                     
-            #240:  geometry                                                                                                                        
-            #240:  geography                                                                                                                       
-            165: SqlType.text(), # varbinary                                                                                                                       
-            167: SqlType.text(), # varchar                                                                                                                         
-            173: SqlType.text(), # binary                                                                                                                          
-            175: SqlType.text(), # char                                                                                                                            
-            189: SqlType.time(), # timestamp                                                                                                                       
-            231: SqlType.text(), # nvarchar                                                                                                                        
-            239: SqlType.text(), # nchar                                                                                                                           
-            # 241: SqlType. xml                                                                                                                             
-            231: SqlType.text(), # sysname                                                                                                                         
-            # 231:  AccountNumber                                                                                                                   
-            # 104:  Flag                                                                                                                            
-            # 231:  Name                                                                                                                            
-            # 104:  NameStyle                                                                                                                       
-            # 231:  OrderNumber                                                                                                                     
-            231: SqlType.text(), # Phone                                              
-            104: SqlType.bool(),
-        }
-        source_column_type = source_column[1]
-        return_sql_type = type_lookup.get(source_column_type)
+        """
+        Note: pyodbc returns a description which contains a tuple per column with the following fields
+            0 column name (or alias, if specified in the SQL)
+            1 type object
+            2 display size (pyodbc does not set this value)
+            3 internal size (in bytes)
+            4 precision
+            5 scale
+            6 nullable (True/False)
+            e.g. ('schema_id', <class 'int'>, None, 10, 10, 0, False)
+        The mapping from SQL types to python types is defined in pyodbx.SQL_data_type_dict
+        """
+        source_column_type = source_column[1].__name__
+        source_column_precision = source_column[4]
+        source_column_scale = source_column[5]
 
-        if return_sql_type is None:
-            error_message = "No Hyper SqlType defined for MySQL source type: {}".format(source_column_type)
-            logger.error(error_message)
-            raise HyperSQLTypeMappingError(error_message)
+        type_lookup = {
+            "str": SqlType.text,
+            "unicode": SqlType.text,
+            "bytearray": SqlType.text,
+            "bool": SqlType.bool,
+
+            "int": SqlType.int,
+            "float": SqlType.double,
+            "long": SqlType.big_int,
+            #"Decimal": SqlType.numeric,
+
+            "date": SqlType.date,
+            "time": SqlType.time,
+            "datetime": SqlType.timestamp_tz,
+        }
+
+        if source_column_type == 'Decimal':
+            return_sql_type = SqlType.numeric(source_column_precision, source_column_scale)
+        else:
+            return_sql_type = type_lookup.get(source_column_type)
+
+            if return_sql_type is None:
+                error_message = "No Hyper SqlType defined for MySQL source type: {}".format(source_column_type)
+                logger.error(error_message)
+                raise HyperSQLTypeMappingError(error_message)
+
+            return_sql_type = return_sql_type()
 
         logger.debug("Translated source column type {} to Hyper SqlType {}".format(source_column_type, return_sql_type))
         return return_sql_type
@@ -184,23 +171,35 @@ class AzureSQLExtractor(BaseExtractor):
 
         Returns a tableauhyperapi.TableDefinition Object
         """
-        # logger.debug(
-        #     "Building Hyper TableDefinition for table {}".format(source_table.dtypes)
-        # )
+        logger.debug(
+            "Building Hyper TableDefinition for table {}".format(source_table)
+        )
         target_cols = []
-        logger.debug(source_table)
-    
         for source_column in source_table:
             this_name = source_column[0]
             this_type = self.hyper_sql_type(source_column)
-            this_col = TableDefinition.Column(name=this_name, type=this_type)
+            if source_column[6] == False:
+                this_col = TableDefinition.Column(this_name, this_type, Nullability.NOT_NULLABLE)
+            else:
+                this_col = TableDefinition.Column(name=this_name, type=this_type)
             target_cols.append(this_col)
             logger.info("..Column {} - Type {}".format(this_name, this_type))
 
-        # create the target schema for our Hyper File
+        # Create the target schema for our Hyper File
         target_schema = TableDefinition(table_name=TableName("Extract", hyper_table_name), columns=target_cols)
         return target_schema
 
+    def load_sample(
+        self,
+        tab_ds_name: str,
+        source_table: Optional[str] = None,
+        sql_query: Optional[str] = None,
+        sample_rows: int = 0,
+        publish_mode: Any = None,
+    ) -> None:
+        error_message = "METHOD load_sample is not implemented for SQL Server (Transact-SQL does not support the LIMIT statement)"
+        logger.error(error_message)
+        raise NotImplementedError(error_message)
 
 def main():
     pass
