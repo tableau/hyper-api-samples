@@ -24,12 +24,15 @@ import getpass
 import json
 import yaml
 
+import tableauserverclient as TSC
+
 # Globals
 EXTRACTORS = {
     "bigquery": "bigquery_extractor.BigQueryExtractor",
     "redshift": "redshift_extractor.RedshiftExtractor",
     "mysql": "mysql_extractor.MySQLExtractor",
     "postgres": "postgres_extractor.PostgresExtractor",
+    "azuresql": "azuresql_extractor.AzureSQLExtractor",
 }
 CONFIGURATION_FILE = "config.yml"
 
@@ -60,7 +63,7 @@ def _exclusive_args(args, *arg_names, required=True, message=None):
     if required:
         if count_args != 1:
             if message is None:
-                raise IllegalArgumentError(message="Must specify one of {}".format(",".join(arg_names)))
+                raise IllegalArgumentError("Must specify one of {}".format(",".join(arg_names)))
             else:
                 raise IllegalArgumentError(message)
     else:
@@ -185,7 +188,11 @@ Functions:
         "--match_conditions_json",
         help="Json file defining conditions for matching rows when command=[update|delete].",
     )
-
+    parser.add_argument(
+        "--overwrite",
+        action='store_true',
+        help="Overwrite published datasource when command=[load_sample|export_load] - default behaviour returns error if target datasource exists",
+    )
     # Tableau Server / Tableau Online options
     _add_arg_with_default(parser, config, "tableau_env.server_address", "Tableau connection string", True, "--tableau_hostname", "-H")
     _add_arg_with_default(parser, config, "tableau_env.site_id", "Tableau site id", True, "--tableau_site_id", "-S")
@@ -229,6 +236,7 @@ Functions:
     # These are loaded on demand so that you don't have to install
     # client libraries for all source database implementations
     extractor_class_str = EXTRACTORS.get(selected_extractor)
+    assert extractor_class_str is not None
     extractor_module_str = extractor_class_str.split(".")[0]
     extractor_class_str = extractor_class_str.split(".")[1]
     extractor_module = importlib.import_module(extractor_module_str)
@@ -263,6 +271,10 @@ Functions:
             tableau_username=args.tableau_username,
             tableau_password=tableau_password,
         )
+    
+    publishmode=TSC.Server.PublishMode.CreateNew
+    if args.overwrite:
+        publishmode=TSC.Server.PublishMode.Overwrite
 
     if selected_command == "load_sample":
         _required_arg(
@@ -275,6 +287,7 @@ Functions:
             source_table=args.source_table_id,
             tab_ds_name=args.tableau_datasource,
             sample_rows=_get_int_from_arg(args.sample_rows, "sample_rows", True),
+            publish_mode=publishmode,
         )
 
     if selected_command == "export_load":
@@ -282,6 +295,7 @@ Functions:
             sql_query=sql_string,
             source_table=args.source_table_id,
             tab_ds_name=args.tableau_datasource,
+            publish_mode=publishmode,
         )
 
     if selected_command == "append":

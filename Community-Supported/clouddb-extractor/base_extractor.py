@@ -215,7 +215,7 @@ class BaseExtractor(ABC):
 
     def __init__(
         self,
-        source_database_config: Dict,
+        source_database_config: Dict[str, Any],
         tableau_hostname: str,
         tableau_project: str,
         tableau_site_id: str = DEFAULT_SITE_ID,
@@ -272,7 +272,7 @@ class BaseExtractor(ABC):
             raise Exception("Invalid SQL identifier: {} - exceeded max allowed length: {}".format(sql_identifier, maxlength))
 
         # char_whitelist = re.compile("^[A-Za-z0-9_-.]*$")
-        char_whitelist = re.compile("\A[\w\.\-]*\Z")
+        char_whitelist = re.compile(r"\A[\w\.\-]*\Z")
         if char_whitelist.match(sql_identifier) is None:
             raise Exception("Invalid SQL identifier: {} - found invalid characters".format(sql_identifier))
 
@@ -346,7 +346,7 @@ class BaseExtractor(ABC):
         self,
         target_table_def: Optional[TableDefinition] = None,
         cursor: Any = None,
-        query_result_iter: Iterable[Iterable[object]] = None,
+        query_result_iter: Optional[Iterable[Iterable[object]]] = None,
         hyper_table_name: str = "Extract",
     ) -> Path:
         """
@@ -379,9 +379,9 @@ class BaseExtractor(ABC):
                 if cursor.description is None:
                     raise Exception("DBAPI Cursor did not return any schema description for query:{}".format(cursor.query))
                 target_table_def = self.hyper_table_definition(source_table=cursor.description, hyper_table_name=hyper_table_name)
+        assert target_table_def is not None
 
         path_to_database = Path(tempfile_name(prefix="temp_", suffix=".hyper"))
-
         with HyperProcess(telemetry=TELEMETRY) as hyper:
 
             # Creates new Hyper extract file

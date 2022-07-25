@@ -20,6 +20,7 @@ following methods:
 For a full list of methods and args see the docstrings in the BaseExtractor class.
 
 ## Contents
+* __azuresql_extractor.py__ - Azure SQL Database implementation of Base Hyper Extractor ABC
 * __base_extractor.py__ - provides an Abstract Base Class with some utility methods to extract from cloud databases to "live to hyper" Tableau Datasources. Database specific Extractor classes extend this to manage connections and schema discovery
 and may override the generic query processing methods based on DBAPIv2 standards with database specific optimizations.
 * __bigquery_extractor.py__ - Google BigQuery implementation of Base Hyper Extractor ABC
@@ -61,6 +62,18 @@ $ python3 extractor_cli.py --help
   - delete: Delete rows from a Tableau datasource that match key columns in a changeset from a query
 ```
 
+### Sample Usage
+
+```console
+# Load a sample (default=1000 lines) from test_table to sample_extract in test_project
+python3 extractor_cli.py load_sample --tableau_token_name hyperapitest --tableau_token_secretfile hyperapitest.token --source_table_id test_table --tableau_project test_project --tableau_datasource sample_extract
+
+# Load a full extract from test_table to full_extract in test_project
+python3 extractor_cli.py export_load --tableau_token_name hyperapitest --tableau_token_secretfile hyperapitest.token --source_table_id test_table --tableau_project test_project --tableau_datasource full_extract
+
+# Execute updated_rows.sql to retrieve a changeset and update full_extract where ROW_ID in changeset matches
+python3 extractor_cli.py update --tableau_token_name hyperapitest --tableau_token_secretfile hyperapitest.token --sqlfile updated_rows.sql --tableau_project test_project --tableau_datasource full_extract --match_columns ROW_ID ROW_ID
+```
 
 # Installation
 
@@ -103,6 +116,10 @@ cd hyper-api-samples/Community-Supported/clouddb-extractor
 pip install -r requirements.txt
 ```
 
+## Azure SQL Database Configuration
+The following steps are required if using azuresql_extractor.
+ - Install ODBC Drivers and Azure utilities for your platform using the following instructions: https://github.com/Azure-Samples/AzureSqlGettingStartedSamples/tree/master/python/Unix-based
+ 
 ## Google BigQuery Configuration
 The following steps are required if using bigquery_extractor.
 
