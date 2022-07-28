@@ -41,6 +41,7 @@ $ python3 extractor_cli.py --help
    {load_sample,export_load,append,update,delete}
    [--extractor {bigquery}]
    [--source_table_id SOURCE_TABLE_ID]
+   [--overwrite]
    [--tableau_project TABLEAU_PROJECT]
    --tableau_datasource TABLEAU_DATASOURCE
    [--tableau_hostname TABLEAU_HOSTNAME]
