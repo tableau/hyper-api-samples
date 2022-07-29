@@ -65,11 +65,6 @@ TELEMETRY: Telemetry = Telemetry.SEND_USAGE_DATA_TO_TABLEAU
         Set to Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU to disable
 """
 
-TEMP_DIR: str = "/tmp"
-"""
-    TEMP_DIR (str): Local staging directory for hyper files, database exports etc.
-"""
-
 SAMPLE_ROWS: int = 1000
 """
     SAMPLE_ROWS (int): Default number of rows for LIMIT when using load_sample
@@ -88,11 +83,17 @@ DATASOURCE_LOCK_TIMEOUT: int = 60
     multiple hosts
 """
 
-# DATASOURCE_LOCKFILE_PREFIX: str = "/var/lock/tableau_extractor"
-DATASOURCE_LOCKFILE_PREFIX: str = "/tmp/lock.tableau_extractor"
+DATASOURCE_LOCKFILE_PREFIX: str = "tableau_extractor"
 """
-    DATASOURCE_LOCKFILE_PREFIX (str): Defines the location of lockfiles
+    DATASOURCE_LOCKFILE_PREFIX (str): Defines the naming convention for lockfiles
 """
+
+TEMP_DIR: str = "/tmp"
+"""
+    TEMP_DIR (str): Local staging directory for hyper files, database exports etc.
+"""
+if os.name == 'nt':
+    TEMP_DIR = os.environ.get('TEMP')
 
 DEFAULT_SITE_ID: str = ""
 """
@@ -190,7 +191,7 @@ def debug(func):
 
 def tempfile_name(prefix: str = "", suffix: str = "") -> str:
     """Return a unique temporary file name."""
-    return "{}/tableau_extractor_{}{}{}".format(TEMP_DIR, prefix, uuid.uuid4().hex, suffix)
+    return os.path.join(TEMP_DIR, "{}_tableau_extractor_{}{}".format(prefix, uuid.uuid4().hex, suffix))
 
 
 class BaseExtractor(ABC):
@@ -271,8 +272,7 @@ class BaseExtractor(ABC):
         if len(sql_identifier) > maxlength:
             raise Exception("Invalid SQL identifier: {} - exceeded max allowed length: {}".format(sql_identifier, maxlength))
 
-        # char_whitelist = re.compile("^[A-Za-z0-9_-.]*$")
-        char_whitelist = re.compile(r"\A[\w\.\-]*\Z")
+        char_whitelist = re.compile(r"\A[\[\w\.\-\]]*\Z")
         if char_whitelist.match(sql_identifier) is None:
             raise Exception("Invalid SQL identifier: {} - found invalid characters".format(sql_identifier))
 
@@ -317,7 +317,7 @@ class BaseExtractor(ABC):
                 #exclusive lock active for datasource here
             #exclusive lock released for datasource here
         """
-        lock_path = "{}.{}.{}.lock".format(DATASOURCE_LOCKFILE_PREFIX, self.tableau_project_id, tab_ds_name)
+        lock_path = os.path.join(TEMP_DIR,"{}.{}.{}.lock".format(DATASOURCE_LOCKFILE_PREFIX, self.tableau_project_id, tab_ds_name))
         return FileLock(lock_path, timeout=DATASOURCE_LOCK_TIMEOUT)
 
     def _get_project_id(self, tab_project: str) -> str:
@@ -400,13 +400,19 @@ class BaseExtractor(ABC):
                         inserter.execute()
                     else:
                         assert cursor is not None
+                        logger.info(f"Spooling cursor to hyper file, DBAPI_BATCHSIZE={self.dbapi_batchsize}")
+                        batches=0
                         if rows:
                             # We have rows in the buffer from where we determined the cursor.description for server side cursor
                             inserter.add_rows(rows)
+                            batches+=1
                         while True:
                             rows = cursor.fetchmany(self.dbapi_batchsize)
                             if rows:
                                 inserter.add_rows(rows)
+                                batches+=1
+                                if batches % 10 == 0:
+                                    logger.info(f"Completed Batch {batches}")
                             else:
                                 break
                         inserter.execute()
