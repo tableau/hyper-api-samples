@@ -8,7 +8,7 @@ with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU, parameters={"e
     with Connection(endpoint=hyper.endpoint) as connection:
         
         # Use the CREATE TEMP EXTERNAL TABLE syntax - this allows us to use the CSV file like a normal table name in SQL queries
-        # We do not need to specify credentials as the S3 bucket is publicly accessible; this may be different when used with your own data
+        # We specify empty credentials as the bucket is publicy accessible; this may be different when used with your own data
         create_external_table = f"""
             CREATE TEMP EXTERNAL TABLE orders(
                order_date DATE, 
@@ -16,7 +16,10 @@ with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU, parameters={"e
                category TEXT,
                sales DOUBLE PRECISION
             )
-            FOR S3_LOCATION({ORDERS_DATASET_S3}, REGION => 'us-west-2')
+            FOR S3_LOCATION({ORDERS_DATASET_S3}, 
+                            ACCESS_KEY_ID => '',
+                            SECRET_ACCESS_KEY => '',
+                            REGION => 'us-west-2')
             WITH (FORMAT => 'csv', HEADER => true)
         """
         # Create the external table using `execute_command` which sends an instruction to the database - we don't expect a result value
