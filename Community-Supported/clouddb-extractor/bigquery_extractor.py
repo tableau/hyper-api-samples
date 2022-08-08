@@ -210,6 +210,7 @@ class BigQueryExtractor(BaseExtractor):
         sql_query: Optional[str] = None,
         source_table: Optional[str] = None,
         hyper_table_name: str = "Extract",
+        multiple_hyper_files: bool = False,
     ) -> Generator[Path, None, None]:
         """
         Executes sql_query or exports rows from source_table and writes output
@@ -220,6 +221,9 @@ class BigQueryExtractor(BaseExtractor):
         sql_query (string): SQL to pass to the source database
         source_table (string): Source table ref ("project ID.dataset ID.table ID")
         hyper_table_name (string): Name of the target Hyper table, default=Extract
+        multiple_hyper_files (boolean): When true some extractor implementations can process
+         large extracts by uploading as a number of smaller hyper files.  This is not atomic
+         so only used for intial full load.
 
         NOTES:
         - Specify either sql_query OR source_table, error if both specified
@@ -241,6 +245,7 @@ class BigQueryExtractor(BaseExtractor):
                 for path_to_database in super().query_to_hyper_files(
                     sql_query=sql_query,
                     hyper_table_name=hyper_table_name,
+                    multiple_hyper_files=multiple_hyper_files,
                 ):
                     yield path_to_database
                 return
@@ -304,7 +309,7 @@ class BigQueryExtractor(BaseExtractor):
                     )
                     os.remove(Path(temp_gzip_filename))
                 pending_blobs += 1
-                if pending_blobs == BLOBS_PER_HYPER_FILE:
+                if multiple_hyper_files and (pending_blobs == BLOBS_PER_HYPER_FILE):
                     path_to_database = self.csv_to_hyper_file(
                         path_to_csv=batch_csv_filename,
                         target_table_def=target_table_def,

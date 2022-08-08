@@ -26,7 +26,6 @@ For a full list of methods and args see the docstrings in the BaseExtractor clas
 * __base_extractor.py__ - provides an Abstract Base Class with some utility methods to extract from cloud databases to "live to hyper" Tableau Datasources. Database specific Extractor classes extend this to manage connections and schema discovery
 and may override the generic query processing methods based on DBAPIv2 standards with database specific optimizations.
 * __bigquery_extractor.py__ - Google BigQuery implementation of Base Hyper Extractor ABC
-* __config.yml__ - Defines site defaults for extractor utility
 * __extractor_cli.py__ - Simple CLI Wrapper around Extractor Classes
 * __mysql_extractor.py__ - MySQL implementation of Base Hyper Extractor ABC
 * __postgres_extractor.py__ - PostgreSQL implementation of Base Hyper Extractor ABC
@@ -34,14 +33,17 @@ and may override the generic query processing methods based on DBAPIv2 standards
 * __redshift_extractor.py__ - AWS Redshift implementation of Base Hyper Extractor ABC
 * __requirements.txt__ - List of third party python library dependencies
 * __tableau_restapi_helpers.py__ - Helper functions for REST operations that are not yet available in the standard tableauserverclient libraries (e.g. PATCH for update/upsert).  Once these get added to the standard client libraries then this module will be refactored out.
+* __SAMPLE-config.yml__ - Template configuration file.  Copy this to config.yml and customize with your site defaults.
+* __SAMPLE-batch_example.py__ - Sample script file shows how to execute multiple commands in a single batch operation (queries records for the most recent N days from source database to changeset hyper file, deletes the most recent N days from target datasource, appends changeset to target datasource)
 
 ## CLI Utility
 We suggest that you import one of the Extractor implementations and call this directly however we've included a command line utility to illustrate the key functionality:
 
 ```console
 $ python3 extractor_cli.py --help
+
   usage: extractor_cli.py [-h]
-   {load_sample,export_load,append,update,delete}
+   {load_sample,export_load,append,update,upsert,delete}
    [--extractor {bigquery}]
    [--source_table_id SOURCE_TABLE_ID]
    [--overwrite]
@@ -62,6 +64,7 @@ $ python3 extractor_cli.py --help
   - export_load: Bulk export and load to new Tableau datasource
   - append: Append the results of a query to an existing Tableau datasource
   - update: Update an existing Tableau datasource with the changeset from a query
+  - upsert: Upsert changeset to an existing published datasource (update if rows match the specified primary keys else insert)
   - delete: Delete rows from a Tableau datasource that match key columns in a changeset from a query
 ```
 
@@ -70,14 +73,12 @@ Before use you should modify the file config.yml with your tableau and database 
 
 __Load Sample:__ Load a sample (default=1000 lines) from test_table to sample_extract in test_project:
 ```console
-python3 extractor_cli.py load_sample --tableau_token_name hyperapitest --tableau_token_secretfile hyperapitest.token \
-  --source_table_id test_table --tableau_project test_project --tableau_datasource sample_extract
+python3 extractor_cli.py load_sample --source_table_id test_table --tableau_project test_project --tableau_datasource sample_extract
 ```
 
 __Full Export:__ Load a full extract from test_table to full_extract in test_project:
 ```console
-python extractor_cli.py export_load --tableau_token_name hyperapitest --tableau_token_secretfile hyperapitest.token \
-  --source_table_id "test_table" --tableau_project "test_project" --tableau_datasource "test_datasource"
+python extractor_cli.py export_load --source_table_id "test_table" --tableau_project "test_project" --tableau_datasource "test_datasource"
  ```
 
 
@@ -86,8 +87,7 @@ __Append:__ Execute new_rows.sql to retrieve a changeset and append to test_data
 # new_rows.sql:
 SELECT * FROM staging_table
 
-python extractor_cli.py update --tableau_token_name hyperapitest --tableau_token_secretfile hyperapitest.token \
-  --sqlfile new_rows.sql --tableau_project "test_project" --tableau_datasource "test_datasource"
+python extractor_cli.py update --sqlfile new_rows.sql --tableau_project "test_project" --tableau_datasource "test_datasource"
 ```
 
 __Update:__ Execute updated_rows.sql to retrieve a changeset and update test_datasource where primary key columns in changeset (METRIC_ID and METRIC_DATE) match corresponding columns in target datasource:
@@ -95,8 +95,16 @@ __Update:__ Execute updated_rows.sql to retrieve a changeset and update test_dat
 # updated_rows.sql:
 SELECT * FROM source_table WHERE LOAD_TIMESTAMP<UPDATE_TIMESTAMP
 
-python extractor_cli.py update --tableau_token_name hyperapitest --tableau_token_secretfile hyperapitest.token \
-  --sqlfile updated_rows.sql --tableau_project "test_project" --tableau_datasource "test_datasource" \
+python extractor_cli.py update --sqlfile updated_rows.sql --tableau_project "test_project" --tableau_datasource "test_datasource" \
+  --match_columns METRIC_ID METRIC_ID --match_columns METRIC_DATE METRIC_DATE
+```
+
+__Upsert:__ Execute upsert_rows.sql to retrieve a changeset and upsert to test_datasource (i.e. update where primary key columns in changeset (METRIC_ID and METRIC_DATE) match corresponding columns in target datasource, else insert):
+```console
+# upsert_rows.sql:
+SELECT * FROM source_table WHERE LOAD_TIMESTAMP<UPDATE_TIMESTAMP OR LOAD_TIMESTAMP>'2022-08-01'
+
+python extractor_cli.py upsert --sqlfile updated_rows.sql --tableau_project "test_project" --tableau_datasource "test_datasource" \
   --match_columns METRIC_ID METRIC_ID --match_columns METRIC_DATE METRIC_DATE
 ```
 
@@ -105,8 +113,7 @@ __Delete:__ Execute deleted_rows.sql to retrieve a changeset containing the prim
 # deleted_rows.sql:
 SELECT METRIC_ID, METRIC_DATE FROM source_table_deleted_rows
 
-python extractor_cli.py delete --tableau_token_name hyperapitest --tableau_token_secretfile hyperapitest.token \
-  --sqlfile deleted_rows.sql --tableau_project "test_project" --tableau_datasource "full_extract" \
+python extractor_cli.py delete --sqlfile deleted_rows.sql --tableau_project "test_project" --tableau_datasource "full_extract" \
   --match_columns METRIC_ID METRIC_ID --match_columns METRIC_DATE METRIC_DATE
 ```
 
@@ -119,8 +126,7 @@ __Conditional Delete:__ In this example no changeset is provided - records to be
         "const": {"type": "datetime", "v": "2018-02-01T00:00:00Z"}
 }
 
-python extractor_cli.py delete --tableau_token_name hyperapitest --tableau_token_secretfile hyperapitest.token \
-  --tableau_project "test_project" --tableau_datasource "full_extract" \
+python extractor_cli.py delete --tableau_project "test_project" --tableau_datasource "full_extract" \
   --match_conditions_json=delete_conditions.json
 ```
 

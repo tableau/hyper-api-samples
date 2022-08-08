@@ -67,7 +67,8 @@ class AzureSQLExtractor(BaseExtractor):
             tableau_password=tableau_password,
         )
         self._source_database_connection = None
-        self.sql_identifier_quote = ""
+        self.sql_identifier_quote = "["
+        self.sql_identifier_endquote = "]"
 
     def source_database_cursor(self) -> Any:
         """
@@ -151,16 +152,45 @@ class AzureSQLExtractor(BaseExtractor):
             return_sql_type = SqlType.numeric(source_column_precision, source_column_scale)
         else:
             return_sql_type = type_lookup.get(source_column_type)
-
             if return_sql_type is None:
                 error_message = "No Hyper SqlType defined for MySQL source type: {}".format(source_column_type)
                 logger.error(error_message)
                 raise HyperSQLTypeMappingError(error_message)
-
             return_sql_type = return_sql_type()
 
         logger.debug("Translated source column type {} to Hyper SqlType {}".format(source_column_type, return_sql_type))
         return return_sql_type
+
+    def _column_type_override(self, column_name)-> Optional[SqlType]:
+        """
+        For some SQL Server implementations precision,scale may be reported incorrectly 
+        and this can be overridden by specifying override_column_type in config.yml
+        
+        Sample Usage:
+            override_column_type:
+                "column_a":
+                    sqltype: "numeric"
+                    precision: 18
+                    scale: 3
+                "column_b" : 
+                    sqltype: "int"
+        """
+        col_type=None
+        override_column_type=self.source_database_config.get("override_column_type")
+        if override_column_type:
+           this_override=override_column_type.get(column_name)
+           if this_override:
+            try:
+                sqltype=this_override.pop("sqltype")
+                sqltype_func=getattr(SqlType, sqltype)
+                col_type=sqltype_func(**this_override)
+                logger.info(f"override_column_type defined for column: {column_name} as Hyper SqlType {col_type}")
+            except Exception as e:
+                error_message=f"override_column_type contains invalid configuration for column {column_name}:{this_override} - Error details {e}"
+                logger.error(error_message)
+                raise HyperSQLTypeMappingError(error_message)
+        return col_type
+
 
     def hyper_table_definition(self, source_table: Any, hyper_table_name: str = "Extract") -> TableDefinition:
         """
@@ -168,6 +198,9 @@ class AzureSQLExtractor(BaseExtractor):
 
         source_table (obj): Source table (Instance of DBAPI Cursor Description)
         hyper_table_name (string): Name of the target Hyper table, default="Extract"
+
+        NOTE: For some SQL Server implementations precision,scale may be reported incorrectly 
+        and this can be overridden by specifying override_column_type in config.yml
 
         Returns a tableauhyperapi.TableDefinition Object
         """
@@ -177,7 +210,10 @@ class AzureSQLExtractor(BaseExtractor):
         target_cols = []
         for source_column in source_table:
             this_name = source_column[0]
-            this_type = self.hyper_sql_type(source_column)
+            this_type=self._column_type_override(this_name)
+            if this_type is None:
+                this_type = self.hyper_sql_type(source_column)
+            
             if source_column[6] == False:
                 this_col = TableDefinition.Column(this_name, this_type, Nullability.NOT_NULLABLE)
             else:

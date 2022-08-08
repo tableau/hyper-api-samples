@@ -134,6 +134,10 @@ CONFIGURATION_FILE: str = "config.yml"
     CONFIGURATION_FILE (str): Defines defaults for this utility
 """
 
+SQL_IDENTIFIER_MAXLENGTH: int = 64
+"""
+    SQL_IDENTIFIER_MAXLENGTH (int): Returns error if table name exceeds defined length
+"""
 
 class TableauJobError(Exception):
     """Exception: Tableau Job Failed."""
@@ -247,6 +251,7 @@ class BaseExtractor(ABC):
         self.tableau_project_id = self._get_project_id(tableau_project)
         self.dbapi_batchsize = DBAPI_BATCHSIZE
         self.sql_identifier_quote = """`"""
+        self.sql_identifier_endquote = None
 
     @property
     def sql_identifier_quote(self):
@@ -261,25 +266,46 @@ class BaseExtractor(ABC):
     def sql_identifier_quote(self, new_char):
         self.__sql_identifier_quote = new_char
 
+    @property
+    def sql_identifier_endquote(self):
+        """
+        Property defines how table identifiers etc. are quoted when SQL is generated.
+
+        Default is None which uses the same as sql_identifier quote
+        Set this is start and end quote character is different (e.g. "[" and "]")
+        """
+        return self.__sql_identifier_endquote
+
+    @sql_identifier_endquote.setter
+    def sql_identifier_endquote(self, new_char):
+        self.__sql_identifier_endquote = new_char
+
     def quoted_sql_identifier(self, sql_identifier: str) -> str:
         """Parse a SQL Identifier (e.g. Table/Column Name) and return escaped and quoted version."""
-        sql_identifier = sql_identifier.strip()
+        quote_start = self.sql_identifier_quote
+        if self.__sql_identifier_endquote is None:
+            quote_end = quote_start
+        else:
+            quote_end = self.sql_identifier_endquote
 
+        sql_identifier = sql_identifier.strip()
         if sql_identifier is None:
             raise Exception("Expected SQL identifier (e.g. Table Name, Column Name) found None")
 
-        maxlength = 64
-        if len(sql_identifier) > maxlength:
-            raise Exception("Invalid SQL identifier: {} - exceeded max allowed length: {}".format(sql_identifier, maxlength))
+        if len(sql_identifier) > SQL_IDENTIFIER_MAXLENGTH:
+            raise Exception("Invalid SQL identifier: {} - exceeded max allowed length: {}".format(sql_identifier, SQL_IDENTIFIER_MAXLENGTH))
 
         char_whitelist = re.compile(r"\A[\[\w\.\-\]]*\Z")
         if char_whitelist.match(sql_identifier) is None:
             raise Exception("Invalid SQL identifier: {} - found invalid characters".format(sql_identifier))
 
-        sql_identifier_parts = sql_identifier.split(".")
-        join_str = "{}.{}".format(self.sql_identifier_quote, self.sql_identifier_quote)
-
-        return "{}{}{}".format(self.sql_identifier_quote, join_str.join(sql_identifier_parts), self.sql_identifier_quote)
+        if sql_identifier[0] == quote_start:
+            logger.debug(f"SQL Identifier {sql_identifier} appears to be already quoted")
+            return sql_identifier
+        else:
+            sql_identifier_parts = sql_identifier.split(".")
+            join_str = "{}.{}".format(quote_end, quote_start)
+            return "{}{}{}".format(quote_start, join_str.join(sql_identifier_parts), quote_end)
 
     @abstractmethod
     def source_database_cursor(self) -> Any:
@@ -317,15 +343,15 @@ class BaseExtractor(ABC):
                 #exclusive lock active for datasource here
             #exclusive lock released for datasource here
         """
-        lock_path = os.path.join(TEMP_DIR,"{}.{}.{}.lock".format(DATASOURCE_LOCKFILE_PREFIX, self.tableau_project_id, tab_ds_name))
+        lock_path = os.path.join(TEMP_DIR, "{}.{}.{}.lock".format(DATASOURCE_LOCKFILE_PREFIX, self.tableau_project_id, tab_ds_name))
         return FileLock(lock_path, timeout=DATASOURCE_LOCK_TIMEOUT)
 
     def _get_project_id(self, tab_project: str) -> str:
         """Return project_id for tab_project."""
-        all_projects, pagination_item = self.tableau_server.projects.get()
 
-        for project in all_projects:
+        for project in TSC.Pager(self.tableau_server.projects):
             if project.name == tab_project:
+                logger.info(f"Found tableau project {project.name} : {project.id}")
                 return project.id
 
         logger.error("No project found for:{}".format(tab_project))
@@ -333,15 +359,15 @@ class BaseExtractor(ABC):
 
     def _get_datasource_by_name(self, tab_datasource: str) -> str:
         """Return datasource object with name=tab_datasource."""
-        # Get project_id from project_name
 
-        all_datasources, pagination_item = self.tableau_server.datasources.get()
-        for datasource in all_datasources:
-            if datasource.name == tab_datasource:
+        for datasource in TSC.Pager(self.tableau_server.datasources):
+            if datasource.name == tab_datasource and datasource.project_id == self.tableau_project_id:
+                logger.info(f"Found tableau datasource {datasource.name} : {datasource.project_id}")
                 return datasource
 
-        raise TableauResourceNotFoundError("No datasource found for:{}".format(tab_datasource))
+        raise TableauResourceNotFoundError("No datasource found for:{} with project id {}".format(tab_datasource, self.tableau_project_id))
 
+    @log_execution_time
     def query_result_to_hyper_file(
         self,
         target_table_def: Optional[TableDefinition] = None,
@@ -401,16 +427,16 @@ class BaseExtractor(ABC):
                     else:
                         assert cursor is not None
                         logger.info(f"Spooling cursor to hyper file, DBAPI_BATCHSIZE={self.dbapi_batchsize}")
-                        batches=0
+                        batches = 0
                         if rows:
                             # We have rows in the buffer from where we determined the cursor.description for server side cursor
                             inserter.add_rows(rows)
-                            batches+=1
+                            batches += 1
                         while True:
                             rows = cursor.fetchmany(self.dbapi_batchsize)
                             if rows:
                                 inserter.add_rows(rows)
-                                batches+=1
+                                batches += 1
                                 if batches % 10 == 0:
                                     logger.info(f"Completed Batch {batches}")
                             else:
@@ -488,11 +514,44 @@ class BaseExtractor(ABC):
         logger.info("Datasource published. Datasource ID: {0}".format(datasource.id))
         return datasource.id
 
+    @log_execution_time
+    def patch_datasource(
+        self,
+        tab_ds_name: str,
+        actions_json: List[Any],
+        path_to_database: Optional[Path] = None,
+    ):
+        """
+        Run a action batch against a datasource on Tableau Server
+
+        tab_ds_name (string): Target Tableau datasource
+        path_to_database (string): The hyper file containing the changeset
+        match_columns (array of tuples): Array of (source_col, target_col) pairs
+        match_conditions_json (string): Define conditions for matching rows in json format.  See Hyper API guide for details.
+        changeset_table_name (string): The name of the table in the hyper file that contains the changest (default="updated_rows")
+        actions_json (string): One of "INSERT", "UPDATE" or "DELETE" (Default="UPDATE")
+
+        NOTES:
+        - match_columns overrides match_conditions_json if both are specified
+        - set path_to_database to None if conditional delete
+            (e.g. json_request="condition": { "op": "<", "target-col": "col1", "const": {"type": "datetime", "v": "2020-06-00"}})
+        - When action is DELETE, it is an error if the source table contains any additional columns not referenced by the condition. Those columns are pointless and we want to let the user know, so they can fix their scripts accordingly.
+        """
+        this_datasource = self._get_datasource_by_name(tab_ds_name)
+        lock = self._datasource_lock(tab_ds_name)
+        with lock:
+            request_id = str(uuid.uuid4())
+            logger.info("Executing batch with request_id={} changeset={} \nactions_json={}".format(request_id, path_to_database, actions_json))
+            async_job = self.tableau_server.datasources.update_hyper_data(
+                datasource_or_connection_item=this_datasource, request_id=request_id, actions=actions_json, payload=path_to_database
+            )
+            self.tableau_server.jobs.wait_for_job(async_job)
+
     def update_datasource_from_hyper_file(
         self,
         path_to_database: Optional[Path],
         tab_ds_name: str,
-        match_columns: Union[List[str], None] = None,
+        match_columns: Union[List[List[str]], None] = None,
         match_conditions_json: Optional[object] = None,
         changeset_table_name: Optional[str] = "updated_rows",
         action: str = "UPDATE",
@@ -571,6 +630,17 @@ class BaseExtractor(ABC):
                     "target-table": "Extract",
                 },
             ]
+        elif action == "UPSERT":
+            actions_json = [
+                {
+                    "action": "upsert",
+                    "source-schema": "Extract",
+                    "source-table": changeset_table_name,
+                    "target-schema": "Extract",
+                    "target-table": "Extract",
+                    "condition": match_conditions_json,
+                },
+            ]
         else:
             raise Exception("Unknown action {} specified for _update_datasource_from_hyper_file".format(action))
 
@@ -588,6 +658,7 @@ class BaseExtractor(ABC):
         sql_query: Optional[str] = None,
         source_table: Optional[str] = None,
         hyper_table_name: str = "Extract",
+        multiple_hyper_files: bool = False,
     ) -> Generator[Path, None, None]:
         """
         Execute sql_query or export rows from source_table and write output to one or more hyper files.
@@ -601,6 +672,9 @@ class BaseExtractor(ABC):
         sql_query (string): SQL to pass to the source database
         source_table (string): Source table ref ("project ID.dataset ID.table ID")
         hyper_table_name (string): Name of the target Hyper table, default=Extract
+        multiple_hyper_files (boolean): When true some extractor implementations can process
+         large extracts by uploading as a number of smaller hyper files.  This is not atomic
+         so only used for intial full load.
 
         NOTES:
         - Specify either sql_query OR source_table, error if both specified
@@ -682,7 +756,7 @@ class BaseExtractor(ABC):
         - Specify either sql_query OR source_table, error if both specified
         """
         first_chunk = True
-        for path_to_database in self.query_to_hyper_files(source_table=source_table, sql_query=sql_query):
+        for path_to_database in self.query_to_hyper_files(source_table=source_table, sql_query=sql_query, multiple_hyper_files=True):
             if first_chunk:
                 self.publish_hyper_file(path_to_database, tab_ds_name, publish_mode)
                 first_chunk = False
@@ -736,7 +810,7 @@ class BaseExtractor(ABC):
         tab_ds_name: str,
         sql_query: Optional[str] = None,
         source_table: Optional[str] = None,
-        match_columns: Union[List[str], None] = None,
+        match_columns: Union[List[List[str]], None] = None,
         match_conditions_json: Optional[object] = None,
         changeset_table_name: str = "updated_rows",
     ) -> None:
@@ -777,12 +851,58 @@ class BaseExtractor(ABC):
             os.remove(path_to_database)
 
     @log_execution_time
+    def upsert_to_datasource(
+        self,
+        tab_ds_name: str,
+        sql_query: Optional[str] = None,
+        source_table: Optional[str] = None,
+        match_columns: Union[List[List[str]], None] = None,
+        match_conditions_json: Optional[object] = None,
+        changeset_table_name: str = "updated_rows",
+    ) -> None:
+        """
+        Upsert the changeset to a datasource on Tableau Server (i.e. Update rows if matched else insert)
+
+        tab_ds_name (string): Target datasource name
+        sql_query (string): The query string that generates the changeset
+        source_table (string): Identifier for source table containing the changeset
+        match_columns (array of tuples): Array of (source_col, target_col) pairs
+        match_conditions_json (string): Define conditions for matching rows in json format.
+            See Hyper API guide for details.
+        changeset_table_name (string): The name of the table in the hyper file that contains
+            the changeset (default="updated_rows")
+
+        NOTES:
+        - Specify either match_columns OR match_conditions_json, error if both specified
+        - Specify either sql_query OR source_table, error if both specified
+        """
+        if not ((match_columns is None) ^ (match_conditions_json is None)):
+            raise Exception("Must specify either match_columns OR match_conditions_json")
+        if not ((sql_query is None) ^ (source_table is None)):
+            raise Exception("Must specify either sql_query OR source_table")
+
+        for path_to_database in self.query_to_hyper_files(
+            sql_query=sql_query,
+            source_table=source_table,
+            hyper_table_name=changeset_table_name,
+        ):
+            self.update_datasource_from_hyper_file(
+                path_to_database=path_to_database,
+                tab_ds_name=tab_ds_name,
+                match_columns=match_columns,
+                match_conditions_json=match_conditions_json,
+                changeset_table_name=changeset_table_name,
+                action="UPSERT",
+            )
+            os.remove(path_to_database)
+
+    @log_execution_time
     def delete_from_datasource(
         self,
         tab_ds_name: str,
         sql_query: Optional[str] = None,
         source_table: Optional[str] = None,
-        match_columns: Union[List[str], None] = None,
+        match_columns: Union[List[List[str]], None] = None,
         match_conditions_json: Optional[object] = None,
         changeset_table_name: str = "deleted_rowids",
     ) -> None:
