@@ -81,7 +81,6 @@ __Full Export:__ Load a full extract from test_table to full_extract in test_pro
 python extractor_cli.py export_load --source_table_id "test_table" --tableau_project "test_project" --tableau_datasource "test_datasource"
  ```
 
-
 __Append:__ Execute new_rows.sql to retrieve a changeset and append to test_datasource:
 ```console
 # new_rows.sql:
