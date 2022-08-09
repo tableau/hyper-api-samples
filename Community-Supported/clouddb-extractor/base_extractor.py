@@ -100,10 +100,12 @@ DEFAULT_SITE_ID: str = ""
     DEFAULT_SITE_ID (str): Default site ID
 """
 
-HYPER_CONNECTION_PARAMETERS: Dict[str, str] = {"lc_time": "en_GB", "date_style": "YMD"}
+HYPER_CONNECTION_PARAMETERS: Dict[str, any] = {
+    "lc_time": "en_GB", "date_style": "YMD",
+}
 """
     HYPER_CONNECTION_PARAMETERS (dict): Options are documented in the Tableau Hyper API
-    documentation, chapter “Connection Settings
+    documentation, chapter “Connection Settings"
 
     - lc_time - Controls the Locale setting that is used for dates. A Locale controls
         which cultural preferences the application should apply. For example, the literal
@@ -121,6 +123,17 @@ HYPER_CONNECTION_PARAMETERS: Dict[str, str] = {"lc_time": "en_GB", "date_style":
 
         Default value: MDY
         Accepted values: MDY, DMY, YMD, YDM
+"""
+
+HYPER_DATABASE_PARAMETERS: Dict[str, any] = {
+    "default_database_version": "2",
+}
+"""
+    HYPER_DATABASE_PARAMETERS (dict): Options are documented in the Tableau Hyper API
+    documentation, chapter "Database Settings"
+
+    - default_database_version - Specifies the default database file format version that will 
+      be used to create new database files.
 """
 
 DBAPI_BATCHSIZE: int = 10000
@@ -408,7 +421,7 @@ class BaseExtractor(ABC):
         assert target_table_def is not None
 
         path_to_database = Path(tempfile_name(prefix="temp_", suffix=".hyper"))
-        with HyperProcess(telemetry=TELEMETRY) as hyper:
+        with HyperProcess(telemetry=TELEMETRY, parameters=HYPER_DATABASE_PARAMETERS) as hyper:
 
             # Creates new Hyper extract file
             # Replaces file with CreateMode.CREATE_AND_REPLACE if it already exists.
@@ -416,6 +429,7 @@ class BaseExtractor(ABC):
                 endpoint=hyper.endpoint,
                 database=path_to_database,
                 create_mode=CreateMode.CREATE_AND_REPLACE,
+                parameters=HYPER_CONNECTION_PARAMETERS,
             ) as connection:
                 connection.catalog.create_schema(schema=target_table_def.table_name.schema_name)
                 connection.catalog.create_table(table_definition=target_table_def)
@@ -467,7 +481,7 @@ class BaseExtractor(ABC):
             default csv format options: "NULL 'NULL', delimiter ',', header FALSE"
         """
         path_to_database = Path(tempfile_name(prefix="temp_", suffix=".hyper"))
-        with HyperProcess(telemetry=TELEMETRY) as hyper:
+        with HyperProcess(telemetry=TELEMETRY, parameters=HYPER_DATABASE_PARAMETERS) as hyper:
             with Connection(
                 endpoint=hyper.endpoint,
                 database=path_to_database,
