@@ -100,7 +100,7 @@ DEFAULT_SITE_ID: str = ""
     DEFAULT_SITE_ID (str): Default site ID
 """
 
-HYPER_CONNECTION_PARAMETERS: Dict[str, any] = {
+HYPER_CONNECTION_PARAMETERS: Dict[str, Any] = {
     "lc_time": "en_GB", "date_style": "YMD",
 }
 """
@@ -125,7 +125,7 @@ HYPER_CONNECTION_PARAMETERS: Dict[str, any] = {
         Accepted values: MDY, DMY, YMD, YDM
 """
 
-HYPER_DATABASE_PARAMETERS: Dict[str, any] = {
+HYPER_DATABASE_PARAMETERS: Dict[str, Any] = {
     "default_database_version": "2",
 }
 """
