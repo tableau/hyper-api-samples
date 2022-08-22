@@ -8,6 +8,8 @@ ORDERS_DATASET_2021 = escape_string_literal("s3://hyper-dev-us-west-2-bucket/tc2
 # CSV file which contains the orders that were returned by the customers
 RETURNS_DATASET = escape_string_literal("s3://hyper-dev-us-west-2-bucket/tc22-demo/returns.csv")
 
+EMPTY_S3_CREDENTIALS = "ACCESS_KEY_ID => '', SECRET_ACCESS_KEY => ''"
+
 # We need to manually enable S3 connectivity as this is still an experimental feature
 with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU, parameters={"experimental_external_s3": "true"}) as hyper:
     # Create a connection to the Hyper process - we do not connect to a database
@@ -16,10 +18,10 @@ with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU, parameters={"e
         # We use the `ARRAY` syntax in the CREATE TEMP EXTERNAL TABLE statement to specify multiple files to be unioned
         create_ext_orders_table = f"""
             CREATE TEMP EXTERNAL TABLE orders
-            FOR ARRAY[ S3_LOCATION({ORDERS_DATASET_2018}, REGION => 'us-west-2'),
-                       S3_LOCATION({ORDERS_DATASET_2019}, REGION => 'us-west-2'),
-                       S3_LOCATION({ORDERS_DATASET_2020}, REGION => 'us-west-2'),
-                       S3_LOCATION({ORDERS_DATASET_2021}, REGION => 'us-west-2')]
+            FOR ARRAY[ S3_LOCATION({ORDERS_DATASET_2018}, {EMPTY_S3_CREDENTIALS}, REGION => 'us-west-2'),
+                       S3_LOCATION({ORDERS_DATASET_2019}, {EMPTY_S3_CREDENTIALS}, REGION => 'us-west-2'),
+                       S3_LOCATION({ORDERS_DATASET_2020}, {EMPTY_S3_CREDENTIALS}, REGION => 'us-west-2'),
+                       S3_LOCATION({ORDERS_DATASET_2021}, {EMPTY_S3_CREDENTIALS}, REGION => 'us-west-2')]
             WITH (FORMAT => 'parquet')
         """
         connection.execute_command(create_ext_orders_table)
@@ -30,7 +32,7 @@ with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU, parameters={"e
                 returned TEXT,
                 order_id TEXT
             )
-            FOR S3_LOCATION({RETURNS_DATASET}, REGION => 'us-west-2')
+            FOR S3_LOCATION({RETURNS_DATASET}, {EMPTY_S3_CREDENTIALS}, REGION => 'us-west-2')
             WITH (FORMAT => 'csv', HEADER => 'true', DELIMITER => ';')
         """
         connection.execute_command(create_ext_returns_table)
