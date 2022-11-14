@@ -49,3 +49,4 @@ Check out these resources to learn more:
 - [TSC Docs](https://tableau.github.io/server-client-python/docs/)
 - [REST API docs](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api.htm)
 - [Tableau Tools](https://github.com/bryantbhowell/tableau_tools)
+- [Another multi-table example](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/git-to-hyper)

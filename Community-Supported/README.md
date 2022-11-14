@@ -33,10 +33,11 @@ The community samples focus on individual use cases and are Python-only. They ha
 - [__flights-data-incremental-refresh__](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/flights-data-incremental-refresh)
   - This sample is based on the content the Hyper team presented in the Hands on Training session "Hands-on: Leverage the Hyper Update API and Hyper API to Keep Your Data Fresh on Tableau Server" at Tableau Conference 2022 ([slides available here](https://mkt.tableau.com/tc22/sessions/live/430-HOT-D1_Hands-onLeverageTheHyperUpdate.pdf)).
 
-    It demonstrates how to implement an incremental refresh based on the Hyper API and the [Hyper Update API](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_how_to_update_data_to_hyper.htm). It showcases this based on fligths data from the [OpenSkyAPI](https://github.com/openskynetwork/opensky-api). 
-
+    It demonstrates how to implement an incremental refresh based on the Hyper API and the [Hyper Update API](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_how_to_update_data_to_hyper.htm). It showcases this based on fligths data from the [OpenSkyAPI](https://github.com/openskynetwork/opensky-api).
 - [__s3-compatible-services__](https://github.com/aetperf/hyper-api-samples/tree/main/Community-Supported/s3-compatible-services)
   - Demonstrates how Hyper can natively interact with S3 compatible services, such as Google Storage, without the need to install any external dependencies like `google-cloud-bigquery`.
+- [__git-to-hyper__](https://github.com/aetperf/hyper-api-samples/tree/main/Community-Supported/git-to-hyper)
+  - Demonstrates how to parse meta data of git and store it in a Hyper file for further analysis.
 
 </br>
 </br>
