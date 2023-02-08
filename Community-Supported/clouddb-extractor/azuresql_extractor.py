@@ -84,7 +84,7 @@ class AzureSQLExtractor(BaseExtractor):
             key_vault_url = db_connection_args.get("key_vault_url")
             secret_name = db_connection_args.get("secret_name")
             if key_vault_url is not None:
-                #Recommended: Read password from keyvault
+                # Recommended: Read password from keyvault
                 from azure.identity import DefaultAzureCredential
                 from azure.keyvault.secrets import SecretClient
                 credential = DefaultAzureCredential()
@@ -92,7 +92,7 @@ class AzureSQLExtractor(BaseExtractor):
                 secret = secret_client.get_secret(secret_name)
                 this_password = secret.value
             else:
-                #Password is stored as plain text
+                # Password is stored as plain text
                 this_password = db_connection_args["password"]
 
             connection_str = "Driver={{ODBC Driver 17 for SQL Server}};Server={host},{port};Database={database};Uid={username};Pwd={password};{connect_str_suffix}".format(
@@ -141,7 +141,7 @@ class AzureSQLExtractor(BaseExtractor):
             "int": SqlType.int,
             "float": SqlType.double,
             "long": SqlType.big_int,
-            #"Decimal": SqlType.numeric,
+            # "Decimal": SqlType.numeric,
 
             "date": SqlType.date,
             "time": SqlType.time,
@@ -161,11 +161,11 @@ class AzureSQLExtractor(BaseExtractor):
         logger.debug("Translated source column type {} to Hyper SqlType {}".format(source_column_type, return_sql_type))
         return return_sql_type
 
-    def _column_type_override(self, column_name)-> Optional[SqlType]:
+    def _column_type_override(self, column_name) -> Optional[SqlType]:
         """
         For some SQL Server implementations precision,scale may be reported incorrectly 
         and this can be overridden by specifying override_column_type in config.yml
-        
+
         Sample Usage:
             override_column_type:
                 "column_a":
@@ -175,22 +175,21 @@ class AzureSQLExtractor(BaseExtractor):
                 "column_b" : 
                     sqltype: "int"
         """
-        col_type=None
-        override_column_type=self.source_database_config.get("override_column_type")
+        col_type = None
+        override_column_type = self.source_database_config.get("override_column_type")
         if override_column_type:
-           this_override=override_column_type.get(column_name)
-           if this_override:
-            try:
-                sqltype=this_override.pop("sqltype")
-                sqltype_func=getattr(SqlType, sqltype)
-                col_type=sqltype_func(**this_override)
-                logger.info(f"override_column_type defined for column: {column_name} as Hyper SqlType {col_type}")
-            except Exception as e:
-                error_message=f"override_column_type contains invalid configuration for column {column_name}:{this_override} - Error details {e}"
-                logger.error(error_message)
-                raise HyperSQLTypeMappingError(error_message)
+            this_override = override_column_type.get(column_name)
+            if this_override:
+                try:
+                    sqltype = this_override.pop("sqltype")
+                    sqltype_func = getattr(SqlType, sqltype)
+                    col_type = sqltype_func(**this_override)
+                    logger.info(f"override_column_type defined for column: {column_name} as Hyper SqlType {col_type}")
+                except Exception as e:
+                    error_message = f"override_column_type contains invalid configuration for column {column_name}:{this_override} - Error details {e}"
+                    logger.error(error_message)
+                    raise HyperSQLTypeMappingError(error_message)
         return col_type
-
 
     def hyper_table_definition(self, source_table: Any, hyper_table_name: str = "Extract") -> TableDefinition:
         """
@@ -210,10 +209,10 @@ class AzureSQLExtractor(BaseExtractor):
         target_cols = []
         for source_column in source_table:
             this_name = source_column[0]
-            this_type=self._column_type_override(this_name)
+            this_type = self._column_type_override(this_name)
             if this_type is None:
                 this_type = self.hyper_sql_type(source_column)
-            
+
             if source_column[6] == False:
                 this_col = TableDefinition.Column(this_name, this_type, Nullability.NOT_NULLABLE)
             else:

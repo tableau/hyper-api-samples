@@ -34,7 +34,8 @@ and may override the generic query processing methods based on DBAPIv2 standards
 * __requirements.txt__ - List of third party python library dependencies
 * __tableau_restapi_helpers.py__ - Helper functions for REST operations that are not yet available in the standard tableauserverclient libraries (e.g. PATCH for update/upsert).  Once these get added to the standard client libraries then this module will be refactored out.
 * __SAMPLE-config.yml__ - Template configuration file.  Copy this to config.yml and customize with your site defaults.
-* __SAMPLE-batch_example.py__ - Sample script file shows how to execute multiple commands in a single batch operation (queries records for the most recent N days from source database to changeset hyper file, deletes the most recent N days from target datasource, appends changeset to target datasource)
+* __SAMPLE-delete_and_append_script.py__ - Sample script file shows how to execute multiple commands in a single batch operation (queries records for the most recent N days from source database to changeset hyper file, deletes the most recent N days from target datasource, appends changeset to target datasource)
+* __SAMPLE-upsert_script.py__ - Sample script performs the same logic as above but applies changes using the upsert action instead of delete and insert.
 
 ## CLI Utility
 We suggest that you import one of the Extractor implementations and call this directly however we've included a command line utility to illustrate the key functionality:
