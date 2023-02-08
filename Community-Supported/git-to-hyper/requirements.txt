@@ -1,0 +1,2 @@
+GitPython==3.1.27
+tableauhyperapi==0.0.15735
