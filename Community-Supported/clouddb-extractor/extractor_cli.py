@@ -144,13 +144,15 @@ Functions:
 - append: Append rows from a query or table to an existing published datasource
 - update: Updates an existing published datasource with the changeset from a
   query or table
+- upsert: Upsert changeset to an existing published datasource - Update if rows
+  match the specified primary keys else insert
 - delete: Delete rows from a published datasource that match a condition and/or
   that match the primary keys in the changeset from a query or table
         """,
     )
     parser.add_argument(
         "command",
-        choices=["load_sample", "export_load", "append", "update", "delete"],
+        choices=["load_sample", "export_load", "append", "update", "delete", "upsert"],
         help="Select the function to call",
     )
     _add_arg_with_default(
@@ -305,7 +307,7 @@ Functions:
             tab_ds_name=args.tableau_datasource,
         )
 
-    if selected_command in ("update", "delete"):
+    if selected_command in ("update", "delete", "upsert"):
         _exclusive_args(
             args,
             "match_columns",
@@ -332,6 +334,14 @@ Functions:
             )
         if selected_command == "delete":
             extractor.delete_from_datasource(
+                sql_query=sql_string,
+                source_table=args.source_table_id,
+                tab_ds_name=args.tableau_datasource,
+                match_columns=args.match_columns,
+                match_conditions_json=match_conditions_json,
+            )
+        if selected_command == "upsert":
+            extractor.upsert_to_datasource(
                 sql_query=sql_string,
                 source_table=args.source_table_id,
                 tab_ds_name=args.tableau_datasource,

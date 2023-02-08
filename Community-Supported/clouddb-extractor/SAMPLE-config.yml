@@ -4,7 +4,9 @@ sample_rows : 1000 # How many rows to extract when using load_sample to preview 
 tableau_env: #Tableau environment configuration defaults
   server_address : "https://eu-west-1a.online.tableau.com/" # The address of target Tableau Server or Tableau Online
   site_id : "testsiteid" # This corresponds to the contentUrl attribute in the Tableau REST API.
-  project : "HyperAPITests" # The default Tableau project to store extract datasources
+  project : "hyperapitest" # The default Tableau project to store extract datasources
+  token_name : hyperapitest # Personal access token name (Do not specify if using tableau_username and password)
+  token_secretfile : hyperapitest.token # Personal access token name (Do not specify if using tableau_username and password)
 bigquery: #BigQueryExtractor configuration defaults
   staging_bucket : "HyperAPITestStaging" # Cloud blob storage bucket for extract staging if required
 postgres: #PostgreSQL configuration defaults
@@ -20,9 +22,6 @@ mysql: #Mysql configuration defaults
     database : "dev"
     port : 3306
     username : "test"
-    #Recommended: use key vault instead of password
-    #key_vault_url : "https://<your_keyvault_name>.vault.azure.net"
-    #secret_name : my-password-secret
     password : "password"
     raise_on_warnings : True
 azuresql: #Azure SQL Database configuration defaults
@@ -31,9 +30,22 @@ azuresql: #Azure SQL Database configuration defaults
     port : 1433
     database : "test"
     username : "test"
+    #Recommended: use key vault instead of plain text password for production
+    #key_vault_url : "https://<your_keyvault_name>.vault.azure.net"
+    #secret_name : my-password-secret
     password : "password"
     connect_str_suffix : "Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30"
     raise_on_warnings : True
+  # #Manually define target hyper column type
+  # #Workaround if Precision,Scale not reported correctly for some SQL Server implementations
+  # # For target types and args see tableauhyperapi.SqlType
+  override_column_type:
+    "example_decimal_col":
+      sqltype: "numeric"
+      precision: 18
+      scale: 3
+    "example_int_col" : 
+      sqltype: "int"
 redshift: #Redshift configuration defaults
   connection:
     host : 'redshift-cluster-1.XXX.eu-west-1.redshift.amazonaws.com'
