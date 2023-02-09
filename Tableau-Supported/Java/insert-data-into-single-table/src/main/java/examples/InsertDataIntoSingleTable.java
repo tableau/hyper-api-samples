@@ -32,7 +32,7 @@ public class InsertDataIntoSingleTable {
     public static void main(String[] args) {
         System.out.println("EXAMPLE - Insert data into a single table into a new Hyper file");
 
-        Path customerDatabasePath = Paths.get("customers.hyper");
+        Path customerDatabasePath = Paths.get(getWorkingDirectory(), "customers.hyper");
 
         // Starts the Hyper Process with telemetry enabled to send data to Tableau.
         // To opt out, simply set telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU.
@@ -68,5 +68,14 @@ public class InsertDataIntoSingleTable {
             System.out.println("The connection to the Hyper file has been closed");
         }
         System.out.println("The Hyper process has been shut down");
+    }
+
+    /**
+     * Returns the current working directory
+     *
+     * @return The inferred working directory
+     */
+    private static String getWorkingDirectory() {
+        return System.getProperty("user.dir");
     }
 }
