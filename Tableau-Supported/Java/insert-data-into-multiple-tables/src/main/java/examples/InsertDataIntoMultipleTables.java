@@ -78,7 +78,7 @@ public class InsertDataIntoMultipleTables {
     public static void main(String[] args) {
         System.out.println("EXAMPLE - Insert data into multiple tables within a new Hyper file\n");
 
-        Path superstoreDatabasePath = Paths.get("customers.hyper");
+        Path superstoreDatabasePath = Paths.get(getWorkingDirectory(), "customers.hyper");
 
         // Starts the Hyper Process with telemetry enabled to send data to Tableau.
         // To opt out, simply set telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU.
@@ -143,5 +143,14 @@ public class InsertDataIntoMultipleTables {
             System.out.println("The connection to the Hyper file has been closed");
         }
         System.out.println("The Hyper process has been shut down");
+    }
+
+    /**
+     * Returns the current working directory
+     *
+     * @return The inferred working directory
+     */
+    private static String getWorkingDirectory() {
+        return System.getProperty("user.dir");
     }
 }

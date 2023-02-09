@@ -32,7 +32,7 @@ public class UpdateDataInExistingHyperFile {
         Path pathToOriginalDatabase = resolveExampleFile("superstore_sample.hyper");
 
         // Make a copy of the superstore sample Hyper file
-        Path pathToCopiedDatabase = Paths.get("superstore_sample_update.hyper").toAbsolutePath();
+        Path pathToCopiedDatabase = Paths.get(getWorkingDirectory(), "superstore_sample_update.hyper").toAbsolutePath();
         try {
             Files.copy(pathToOriginalDatabase, pathToCopiedDatabase, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
@@ -102,12 +102,21 @@ public class UpdateDataInExistingHyperFile {
      * @return A path to the resolved file
      */
     private static Path resolveExampleFile(String filename) {
-        for (Path path = Paths.get(".").toAbsolutePath(); path != null; path = path.getParent()) {
+        for (Path path = Paths.get(getWorkingDirectory()).toAbsolutePath(); path != null; path = path.getParent()) {
             Path file = path.resolve("data/" + filename);
             if (Files.isRegularFile(file)) {
                 return file;
             }
         }
         throw new IllegalAccessError("Could not find example file. Check the working directory.");
+    }
+
+    /**
+     * Returns the current working directory
+     *
+     * @return The inferred working directory
+     */
+    private static String getWorkingDirectory() {
+        return System.getProperty("user.dir");
     }
 }

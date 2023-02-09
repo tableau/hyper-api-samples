@@ -33,7 +33,7 @@ public class InsertSpatialDataToAHyperFile{
     public static void main(String[] args) {
         System.out.println("EXAMPLE - Insert spatial data into a Hyper file");
 
-        Path spatialDataPath = Paths.get("spatial_data.hyper");
+        Path spatialDataPath = Paths.get(getWorkingDirectory(), "spatial_data.hyper");
 
         // Starts the Hyper Process with telemetry enabled to send data to Tableau.
         // To opt out, simply set telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU.
@@ -95,5 +95,14 @@ public class InsertSpatialDataToAHyperFile{
             System.out.println("The connection to the Hyper file has been closed");
         }
         System.out.println("The Hyper process has been shut down");
+    }
+
+    /**
+     * Returns the current working directory
+     *
+     * @return The inferred working directory
+     */
+    private static String getWorkingDirectory() {
+        return System.getProperty("user.dir");
     }
 }

@@ -47,7 +47,7 @@ public class CreateHyperFileFromCSV {
     public static void main(String[] args) {
         System.out.println("EXAMPLE -  Load data from CSV into table in new Hyper file");
 
-        Path customerDatabasePath = Paths.get("customers.hyper");
+        Path customerDatabasePath = Paths.get(getWorkingDirectory(), "customers.hyper");
 
         // Optional process parameters. They are documented in the Tableau Hyper documentation, chapter "Process Settings"
         // (https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/processsettings.html).
@@ -111,12 +111,21 @@ public class CreateHyperFileFromCSV {
      * @return A path to the resolved file
      */
     private static Path resolveExampleFile(String filename) {
-        for (Path path = Paths.get(".").toAbsolutePath(); path != null; path = path.getParent()) {
+        for (Path path = Paths.get(getWorkingDirectory()).toAbsolutePath(); path != null; path = path.getParent()) {
             Path file = path.resolve("data/" + filename);
             if (Files.isRegularFile(file)) {
                 return file;
             }
         }
         throw new IllegalAccessError("Could not find example file. Check the working directory.");
+    }
+
+    /**
+     * Returns the current working directory
+     *
+     * @return The inferred working directory
+     */
+    private static String getWorkingDirectory() {
+        return System.getProperty("user.dir");
     }
 }

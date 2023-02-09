@@ -35,7 +35,7 @@ public class InsertDataWithExpressions {
     public static void main(String[] args) {
         System.out.println("EXAMPLE - Push down computations to Hyper during insertion with expressions");
 
-        Path ordersPath = Paths.get("orders.hyper");
+        Path ordersPath = Paths.get(getWorkingDirectory(), "orders.hyper");
 
         // Starts the Hyper Process with telemetry enabled to send data to Tableau.
         // To opt out, simply set telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU.
@@ -109,5 +109,14 @@ public class InsertDataWithExpressions {
             System.out.println("The connection to the Hyper file has been closed");
         }
         System.out.println("The Hyper process has been shut down");
+    }
+
+    /**
+     * Returns the current working directory
+     *
+     * @return The inferred working directory
+     */
+    private static String getWorkingDirectory() {
+        return System.getProperty("user.dir");
     }
 }
