@@ -11,7 +11,7 @@ RETURNS_DATASET = escape_string_literal("s3://hyper-dev-us-west-2-bucket/tc22-de
 EMPTY_S3_CREDENTIALS = "ACCESS_KEY_ID => '', SECRET_ACCESS_KEY => ''"
 
 # We need to manually enable S3 connectivity as this is still an experimental feature
-with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU, parameters={"experimental_external_s3": "true"}) as hyper:
+with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU) as hyper:
     # Create a connection to the Hyper process - we do not connect to a database
     with Connection(endpoint=hyper.endpoint) as connection:
 

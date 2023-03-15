@@ -14,8 +14,6 @@ states_dataset_gs = escape_string_literal(
 
 # Hyper Process parameters
 parameters = {}
-# We need to manually enable S3 connectivity as this is still an experimental feature
-parameters["experimental_external_s3"] = "true"
 # endpoint URL
 parameters["external_s3_hostname"] = "storage.googleapis.com"
 # We do not need to specify credentials and bucket location as the GS bucket is
