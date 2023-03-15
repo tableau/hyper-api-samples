@@ -21,7 +21,7 @@ CURRENT_DATASET_DBNAME = ORDERS_DATASET_DBNAME
 CURRENT_DATASET_REGION = ORDERS_DATASET_REGION
 
 # We need to manually enable S3 connectivity as this is still an experimental feature
-with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU, parameters={"experimental_external_s3": "true"}) as hyper:
+with HyperProcess(telemetry=Telemetry.SEND_USAGE_DATA_TO_TABLEAU) as hyper:
     # Create a connection to the Hyper process and let it create a database file - if it exists, it's overwritten
     with Connection(endpoint=hyper.endpoint, database=CURRENT_DATASET_DBNAME, create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
         
