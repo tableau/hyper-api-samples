@@ -23,7 +23,7 @@ customer_table = TableDefinition(
 def run_create_hyper_file_from_csv():
     """
     An example demonstrating loading data from a csv into a new Hyper file
-    For more details, see https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_insert_csv.html
+    For more details, see https://tableau.github.io/hyper-db/docs/guides/hyper_file/insert_csv
     """
     print("EXAMPLE - Load data from CSV into table in new Hyper file")
 
@@ -31,7 +31,7 @@ def run_create_hyper_file_from_csv():
 
     # Optional process parameters.
     # They are documented in the Tableau Hyper documentation, chapter "Process Settings"
-    # (https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/processsettings.html).
+    # (https://tableau.github.io/hyper-db/docs/hyper-api/hyper_process#process-settings).
     process_parameters = {
         # Limits the number of Hyper event log files to two.
         "log_file_max_count": "2",
@@ -45,7 +45,7 @@ def run_create_hyper_file_from_csv():
 
         # Optional connection parameters.
         # They are documented in the Tableau Hyper documentation, chapter "Connection Settings"
-        # (https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/connectionsettings.html).
+        # (https://tableau.github.io/hyper-db/docs/hyper-api/connection#connection-settings).
         connection_parameters = {"lc_time": "en_US"}
 
         # Creates new Hyper file "customer.hyper".
@@ -71,7 +71,7 @@ def run_create_hyper_file_from_csv():
             # It treats the first line of the csv file as a header and does not import it.
             #
             # The parameters of the COPY command are documented in the Tableau Hyper SQL documentation
-            # (https:#help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-copy.html).
+            # (https://tableau.github.io/hyper-db/docs/sql/command/copy_from).
             print("Issuing the SQL COPY command to load the csv file into the table. Since the first line")
             print("of our csv file contains the column names, we use the `header` option to skip it.")
             count_in_customer_table = connection.execute_command(

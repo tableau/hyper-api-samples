@@ -21,7 +21,7 @@ import static java.util.Arrays.asList;
 
 /**
  * An example demonstrating loading data from a csv into a new Hyper file
- * For more details, see https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_insert_csv.html
+ * For more details, see https://tableau.github.io/hyper-db/docs/guides/hyper_file/insert_csv
  */
 public class CreateHyperFileFromCSV {
 
@@ -50,7 +50,7 @@ public class CreateHyperFileFromCSV {
         Path customerDatabasePath = Paths.get(getWorkingDirectory(), "customers.hyper");
 
         // Optional process parameters. They are documented in the Tableau Hyper documentation, chapter "Process Settings"
-        // (https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/processsettings.html).
+        // (https://tableau.github.io/hyper-db/docs/hyper-api/hyper_process#process-settings).
         Map<String, String> processParameters = new HashMap<>();
         // Limits the number of Hyper event log files to two.
         processParameters.put("log_file_max_count", "2");
@@ -61,7 +61,7 @@ public class CreateHyperFileFromCSV {
         // To opt out, simply set telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU.
         try (HyperProcess process = new HyperProcess(Telemetry.SEND_USAGE_DATA_TO_TABLEAU, "example", processParameters)) {
             // Optional connection parameters. They are documented in the Tableau Hyper documentation, chapter "Connection Settings"
-            // (https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/connectionsettings.html).
+            // (https://tableau.github.io/hyper-db/docs/hyper-api/connection#connection-settings).
             Map<String, String> connectionParameters = new HashMap<>();
             connectionParameters.put("lc_time", "en_US");
 
@@ -88,7 +88,7 @@ public class CreateHyperFileFromCSV {
                 // It treats the first line of the csv file as a header and does not import it.
                 //
                 // The parameters of the COPY command are documented in the Tableau Hyper SQL documentation
-                // (https:#help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-copy.html).
+                // (https://tableau.github.io/hyper-db/docs/sql/command/copy_from).
                 System.out.println("Issuing the SQL COPY command to load the csv file into the table. Since the first line");
                 System.out.println("of our csv file contains the column names, we use the `header` option to skip it.");
                 long countInCustomerTable = connection.executeCommand(

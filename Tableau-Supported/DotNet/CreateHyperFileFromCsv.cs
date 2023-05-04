@@ -10,7 +10,7 @@ namespace Example
     {
         /// <summary>
         /// Create a new Hyper file with a single table and load data from a CSV file into it.
-        /// For more details, see https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_insert_csv.html
+        /// For more details, see https://tableau.github.io/hyper-db/docs/guides/hyper_file/insert_csv
         /// </summary>
         /// <param name="exampleDataDir">Path to the directory with example data.</param>
         public override void Execute(string exampleDataDir)
@@ -18,7 +18,7 @@ namespace Example
             Console.WriteLine("EXAMPLE - Load data from a CSV file into a table in a new Hyper file.");
 
             // Optional process parameters. They are documented in the Tableau Hyper documentation, chapter "Process Settings"
-            // (https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/processsettings.html).
+            // (https://tableau.github.io/hyper-db/docs/hyper-api/hyper_process#process-settings).
             var processParameters = new Dictionary<string, string>
             {
                 // Limits the number of Hyper event log files to two.
@@ -31,7 +31,7 @@ namespace Example
             using (HyperProcess hyper = new HyperProcess(Telemetry.SendUsageDataToTableau, "example", processParameters))
             {
                 // Optional connection parameters. They are documented in the Tableau Hyper documentation, chapter "Connection Settings"
-                // (https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/connectionsettings.html).
+                // (https://tableau.github.io/hyper-db/docs/hyper-api/connection#connection-settings).
                 var connectionParameters = new Dictionary<string, string>
                 {
                     { "lc_time", "en_US" }
@@ -67,7 +67,7 @@ namespace Example
                     // It treats the first line of the csv file as a header and does not import it.
                     //
                     // The parameters of the COPY command are documented in the Tableau Hyper SQL documentation
-                    // (https:#help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-copy.html).
+                    // (https://tableau.github.io/hyper-db/docs/sql/command/copy_from).
                     Console.WriteLine("Issuing the SQL COPY command to load the csv file into the table. Since the first line");
                     Console.WriteLine("of our csv file contains the column names, we use the `header` option to skip it.");
                     int countInCustomerTable = connection.ExecuteCommand(
