@@ -16,7 +16,7 @@ static const hyperapi::TableDefinition customerTable{
     hyperapi::TableDefinition::Column{"Segment", hyperapi::SqlType::text(), hyperapi::Nullability::NotNullable}}};
 
 // An example demonstrating loading data from a csv into a new Hyper file
-// For more details, see https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_insert_csv.html
+// For more details, see https://tableau.github.io/hyper-db/docs/guides/hyper_file/insert_csv
 static void runCreateHyperFileFromCSV() {
    std::cout << "EXAMPLE - Load data from CSV into table in new Hyper file" << std::endl;
    const std::string pathToDatabase = "data/customer.hyper";
@@ -25,7 +25,7 @@ static void runCreateHyperFileFromCSV() {
    // To opt out, simply set telemetry=hyperapi::Telemetry::DoNotSendUsageDataToTableau.
    {
       // Optional process parameters. They are documented in the Tableau Hyper documentation, chapter "Process Settings"
-      // (https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/processsettings.html).
+      // (https://tableau.github.io/hyper-db/docs/hyper-api/hyper_process#process-settings).
       std::unordered_map<std::string, std::string> processParameters = {
          // Limits the number of Hyper event log files to two.
          {"log_file_max_count", "2"},
@@ -37,7 +37,7 @@ static void runCreateHyperFileFromCSV() {
       // Replaces existing file with hyperapi::CreateMode::CreateAndReplace if it already exists.
       {
          // Optional connection parameters. They are documented in the Tableau Hyper documentation, chapter "Connection Settings"
-         // (https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/connectionsettings.html).
+         // (https://tableau.github.io/hyper-db/docs/hyper-api/connection#connection-settings).
          std::unordered_map<std::string, std::string> connectionParameters = {{"lc_time", "en_US"}};
 
          hyperapi::Connection connection(hyper.getEndpoint(), pathToDatabase, hyperapi::CreateMode::CreateAndReplace, connectionParameters);
@@ -59,7 +59,7 @@ static void runCreateHyperFileFromCSV() {
          // It treats the first line of the csv file as a header and does not import it.
          //
          // The parameters of the COPY command are documented in the Tableau Hyper SQL documentation
-         // (https:#help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-copy.html).
+         // (https://tableau.github.io/hyper-db/docs/sql/command/copy_from).
          std::cout << "Issuing the SQL COPY command to load the csv file into the table. Since the first line" << std::endl;
          std::cout << "of our csv file contains the column names, we use the `header` option to skip it." << std::endl;
          int64_t rowCount = connection.executeCommand(
