@@ -55,18 +55,18 @@ This script will perform a live query on the CSV file which is stored in this pu
 Run the Python script
 
 ```bash
-$ python join-parquet-and-csv-on-s3.py
+$ python https://tableau.github.io/hyper-db/lang_docs/pyhttps://tableau.github.io/hyper-db/lang_docs/py
 ```
 
-This script will perform a live query on multiple `.parquet` files which are stored on AWS S3. It shows how to use the [`ARRAY` syntax](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/functions-srf.html#FUNCTIONS-SRF-EXTERNAL) to union multiple `.parquet` files and how `.parquet` files can be joined together with `.csv` files - as you would expect from normal database tables stored inside a `.hyper` file.
+This script will perform a live query on multiple `.parquet` files which are stored on AWS S3. It shows how to use the [`ARRAY` syntax](https://tableau.github.io/hyper-db/docs/sql/external/) to union multiple `.parquet` files and how `.parquet` files can be joined together with `.csv` files - as you would expect from normal database tables stored inside a `.hyper` file.
 
 ## __Resources__
 Check out these resources to learn more:
 
-- [Hyper API docs](https://help.tableau.com/current/api/hyper_api/en-us/index.html)
+- [Hyper API docs](https://tableau.github.io/hyper-db)
 
-- [Tableau Hyper API Reference (Python)](https://help.tableau.com/current/api/hyper_api/en-us/reference/py/index.html)
+- [Tableau Hyper API Reference (Python)](https://tableau.github.io/hyper-db/lang_docs/py/index.html)
 
-- [The EXTERNAL function in the Hyper API SQL Reference](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/functions-srf.html#FUNCTIONS-SRF-EXTERNAL)
+- [The EXTERNAL function in the Hyper API SQL Reference](https://tableau.github.io/hyper-db/docs/sql/external/)
 
 - [AWS command line tools documentation](https://docs.aws.amazon.com/cli/latest/reference/s3/cp.html), e.g. if you want to download some of the sample files to your local machine and explore them

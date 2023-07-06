@@ -22,10 +22,10 @@ def run_hyper_query_external():
     An example demonstrating how to use Hyper to read data directly from external sources.
     
     More information can be found here:
-    https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/external-data-in-sql.html
-    https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-copy.html
-    https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-createexternaltable.html
-    https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/functions-srf.html#FUNCTIONS-SRF-EXTERNAL
+    https://tableau.github.io/hyper-db/docs/sql/external/
+    https://tableau.github.io/hyper-db/docs/sql/command/copy_from
+    https://tableau.github.io/hyper-db/docs/sql/command/create_external_table
+    https://tableau.github.io/hyper-db/docs/sql/external/
     """
 
     # Start the Hyper process.

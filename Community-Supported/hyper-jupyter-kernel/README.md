@@ -68,7 +68,7 @@ into your console and submit it. You should get `6` as a result. Congrats! You j
 
 Independent of how you run your `hyper_kernel`, the usage is always similar:
 You feed SQL to it, and in return you get the query results.
-The [HyperAPI SQL reference](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/index.html) contains all the information you need.
+The [HyperAPI SQL reference](https://tableau.github.io/hyper-db/docs/sql/) contains all the information you need.
 For everyone who prefers to not read the whole reference first, here is a short quick start on the most common scenarios:
 
 
@@ -76,7 +76,7 @@ For everyone who prefers to not read the whole reference first, here is a short 
 
 That was boring, though... Instead of only using Hyper as your calculator, you usually want to use it to crunch some data.
 
-First let's [create a new database](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-createdatabase.html):
+First let's [create a new database](https://tableau.github.io/hyper-db/docs/sql/command/create_database):
 ```
 CREATE DATABASE "my_data.hyper";
 ```
@@ -86,13 +86,13 @@ and load that newly created database into our session:
 \attach "patch/to/my/data.hyper" database1
 ```
 
-Next, we will need to [create a table](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-createtable.html):
+Next, we will need to [create a table](https://tableau.github.io/hyper-db/docs/sql/command/create_table):
 ```
 CREATE TABLE database1.public.my_table (column1 text, column2 bigint);
 ```
 where `database1` is the alias we gave to our database when running the `\attach` command
 
-Maybe [insert some data](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-insert.html):
+Maybe [insert some data](https://tableau.github.io/hyper-db/docs/sql/command/insert):
 ```
 INSERT INTO database1.public.my_table VALUES('one', 1),('two', 2),('three', 3)
 ```
@@ -104,7 +104,7 @@ And close the database:
 
 and voila: You have your Hyper file which you could now use with Tableau.
 In real-life you might want to put some more useful data in it, though.
-You could do so, using e.g. the [COPY command](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-copy.html) to load data from a CSV file.
+You could do so, using e.g. the [COPY command](https://tableau.github.io/hyper-db/docs/sql/command/copy_from) to load data from a CSV file.
 
 ## Examining an existing Hyper database
 
@@ -133,7 +133,7 @@ SELECT COUNT(*) FROM "Extract"."Extract"
 
 # Built-in commands
 
-Most of the time, you want to run [SQL commands](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-commands.html).
+Most of the time, you want to run [SQL commands](https://tableau.github.io/hyper-db/docs/sql/command/).
 In addition, this command line interface also offers a few convenience functions.
 In particular, you can use:
 * `\o <file>` to redirect the output of all following queries to a file

@@ -94,6 +94,6 @@ The script will generate a `git.hyper` file which can be used in Tableau for fur
 ## __Resources__
 Check out these resources to learn more:
 
-- [Hyper API docs](https://help.tableau.com/current/api/hyper_api/en-us/index.html)
+- [Hyper API docs](https://tableau.github.io/hyper-db)
 
-- [Tableau Hyper API Reference (Python)](https://help.tableau.com/current/api/hyper_api/en-us/reference/py/index.html)
+- [Tableau Hyper API Reference (Python)](https://tableau.github.io/hyper-db/lang_docs/py/index.html)

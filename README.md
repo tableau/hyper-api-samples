@@ -12,7 +12,7 @@ This repo is the home of the Hyper API samples. It contains both __Tableau-Suppo
 
 <br  />
 
-### __If you are looking to learn more about the Hyper API, please check out the [official documentation](https://help.tableau.com/current/api/hyper_api/en-us/index.html).__ ### 
+### __If you are looking to learn more about the Hyper API, please check out the [official documentation](https://tableau.github.io/hyper-db).__ ### 
 
 <br  />
 
@@ -25,7 +25,7 @@ For the unfamiliar, the Hyper API contains a set of functions you can use to aut
 
 
 ## How do I install the Hyper API?
-It is a prerequisite that to work with these code samples, the Hyper API is installed in your language of choice. Head to our [official Hyper API Documentation](https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_installing.html) to get it up and running.
+It is a prerequisite that to work with these code samples, the Hyper API is installed in your language of choice. Head to our [official Hyper API Documentation](https://tableau.github.io/hyper-db/docs) to get it up and running.
 
 
 

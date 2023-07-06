@@ -23,7 +23,7 @@ def run_read_data_from_existing_hyper_file():
 
     # Make a copy of the superstore denormalized sample Hyper file
     path_to_database = Path(shutil.copy(src=path_to_source_database,
-                                        dst="superstore_sample_denormalized_read.hyper")).resolve()
+                            dst="superstore_sample_denormalized_read.hyper")).resolve()
 
     # Starts the Hyper Process with telemetry enabled to send data to Tableau.
     # To opt out, simply set telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU.

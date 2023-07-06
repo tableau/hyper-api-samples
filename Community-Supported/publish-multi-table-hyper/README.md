@@ -29,7 +29,7 @@ Modify `config.json` and add the following fields:
 ## __Data and Table Definitions__
 If you want to simply run the sample to test the publishing process, you do not need to make any changes to the python file. Ensure that you have installed the requirements, update the config file with authentication information and execute the python file.
 
-Once you are ready to use your own data, you will need to change the `create_hyper_file_and_insert_data()` function. This function could be a part of an existing ETL workflow, grab the data from an API request, or pull CSVs from cloud storage like AWS, Azure, or GCP. In any case, writing that code is up to you. You can [check out this doc](https://help.tableau.com/current/api/hyper_api/en-us/reference/py/tableauhyperapi.html?tableauhyperapi.Inserter) for more information on how to pass data to Hyper's `inserter()` method and [this doc](https://help.tableau.com/current/api/hyper_api/en-us/reference/py/tableauhyperapi.html?tableauhyperapi.SqlType) for more information on the the Hyper API's SqlType class.
+Once you are ready to use your own data, you will need to change the `create_hyper_file_and_insert_data()` function. This function could be a part of an existing ETL workflow, grab the data from an API request, or pull CSVs from cloud storage like AWS, Azure, or GCP. In any case, writing that code is up to you. You can [check out this doc](https://tableau.github.io/hyper-db/lang_docs/py/tableauhyperapi.html?tableauhyperapi.Inserter) for more information on how to pass data to Hyper's `inserter()` method and [this doc](https://tableau.github.io/hyper-db/lang_docs/py/tableauhyperapi.html?tableauhyperapi.SqlType) for more information on the the Hyper API's SqlType class.
 
 __Note:__ The current example features two tables, but in theory, this could support as many as you'd like. Just be sure to add the proper table definitions and make sure that the order in the list of table data and table definitions properly match.
 
@@ -45,7 +45,7 @@ Leverage the [official Hyper API samples](https://github.com/tableau/hyper-api-s
 
 ## __Resources__
 Check out these resources to learn more:
-- [Hyper API docs](https://help.tableau.com/current/api/hyper_api/en-us/index.html)
+- [Hyper API docs](https://tableau.github.io/hyper-db)
 - [TSC Docs](https://tableau.github.io/server-client-python/docs/)
 - [REST API docs](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api.htm)
 - [Tableau Tools](https://github.com/bryantbhowell/tableau_tools)
