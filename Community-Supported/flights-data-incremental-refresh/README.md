@@ -44,7 +44,7 @@ There are two cases for publishing the database to Server:
 
 ## __Resources__
 Check out these resources to learn more:
-- [Hyper API documentation](https://help.tableau.com/current/api/hyper_api/en-us/index.html)
+- [Hyper API documentation](https://tableau.github.io/hyper-db)
 - [Hyper Update API documentation](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_how_to_update_data_to_hyper.htm)
 - [Tableau Server Client Docs](https://tableau.github.io/server-client-python/docs/)
 - [REST API documentation](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api.htm)

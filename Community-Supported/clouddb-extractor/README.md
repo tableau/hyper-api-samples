@@ -150,7 +150,7 @@ source env/bin/activate
 ```
 
 ## Install Hyper API Client Libraries
-For latest instructions refer to: [Hyper API for Python](https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_installing.html#install-the-hyper-api-for-python-36-and-37)
+For latest instructions refer to: [Hyper API for Python](https://tableau.github.io/hyper-db/docs/installation)
 
 ```console
 pip install --upgrade pip

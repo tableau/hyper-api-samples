@@ -58,7 +58,7 @@ Leverage the [official Hyper API samples](https://github.com/tableau/hyper-api-s
 
 ## __Resources__
 Check out these resources to learn more:
-- [Hyper API docs](https://help.tableau.com/current/api/hyper_api/en-us/index.html)
+- [Hyper API docs](https://tableau.github.io/hyper-db)
 - [TSC docs](https://tableau.github.io/server-client-python/docs/)
 - [REST API docs](https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api.htm)
 - [Tableau Tools](https://github.com/bryantbhowell/tableau_tools)

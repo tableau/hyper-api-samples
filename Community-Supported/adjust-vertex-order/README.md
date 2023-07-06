@@ -7,7 +7,7 @@ __Current Version__: 1.0
 
 This sample demonstrates how you can adjust the vertex order of all polygons of an existing `.hyper` file. This is done by copying all of the tables and data into a new file while calling a SQL function (`geo_auto_vertex_order` or `geo_invert_vertex_order`) on all columns of type `GEOGRAPHY`.
 
-For more information on Hyper's SQL functions that operate on `GEOGRAPHY` values, see [Geographic Functions](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/functions-geography.html).
+For more information on Hyper's SQL functions that operate on `GEOGRAPHY` values, see [Geographic Functions](https://tableau.github.io/hyper-db/docs/sql/scalar_func/geography).
 
 ## Background
 
@@ -85,12 +85,12 @@ Copying table "input"."Extract"."Extract" with 1 spatial columns: [Name('Locatio
 ## __Resources__
 Check out these resources to learn more:
 
-- [Hyper API docs](https://help.tableau.com/current/api/hyper_api/en-us/index.html)
+- [Hyper API docs](https://tableau.github.io/hyper-db)
 
-- [Tableau Hyper API Reference (Python)](https://help.tableau.com/current/api/hyper_api/en-us/reference/py/index.html)
+- [Tableau Hyper API Reference (Python)](https://tableau.github.io/hyper-db/lang_docs/py/index.html)
 
-- [Hyper API SQL Reference](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/index.html)
+- [Hyper API SQL Reference](https://tableau.github.io/hyper-db/docs/sql/)
 
-- [Add Spatial Data to a Hyper File](https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_geodata.html)
+- [Add Spatial Data to a Hyper File](https://tableau.github.io/hyper-db/docs/guides/hyper_file/geodata)
 
-- [Geographic Functions in Hyper's SQL API](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/functions-geography.html)
+- [Geographic Functions in Hyper's SQL API](https://tableau.github.io/hyper-db/docs/sql/scalar_func/geography)

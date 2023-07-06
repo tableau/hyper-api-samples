@@ -18,7 +18,7 @@ To run the script, you will need:
 
 ## Run the sample
 
-Running hyper-to-csv.py will transform a given hyper file into a CSV. Simply change the values of `hyper_name`, `my_table`, and `output_name` to match your use case. Note that `my_table` is an object that can take both the table name, as well as the schema name. See more on this in the [TableName documentation](https://help.tableau.com/current/api/hyper_api/en-us/reference/py/tableauhyperapi.html#tableauhyperapi.TableName).
+Running hyper-to-csv.py will transform a given hyper file into a CSV. Simply change the values of `hyper_name`, `my_table`, and `output_name` to match your use case. Note that `my_table` is an object that can take both the table name, as well as the schema name. See more on this in the [TableName documentation](https://tableau.github.io/hyper-db/lang_docs/py/tableauhyperapi.html#tableauhyperapi.TableName).
 
 Instead of leveraging the `insert_data()` method, you will simply reference an existing `.hyper` file and use the `convert_to_csv()` method. The sample database created in the script is for demonstrative purposes only.
 
@@ -32,11 +32,11 @@ As mentioned in pantab's [usage notes](https://pantab.readthedocs.io/en/latest/c
 ## __Resources__
 Check out these resources to learn more:
 
-- [Hyper API docs](https://help.tableau.com/current/api/hyper_api/en-us/index.html)
+- [Hyper API docs](https://tableau.github.io/hyper-db)
 
-- [Tableau Hyper API Reference (Python)](https://help.tableau.com/current/api/hyper_api/en-us/reference/py/index.html)
+- [Tableau Hyper API Reference (Python)](https://tableau.github.io/hyper-db/lang_docs/py/index.html)
 
-- [Hyper API SQL Reference](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/index.html)
+- [Hyper API SQL Reference](https://tableau.github.io/hyper-db/docs/sql/)
 
 - [pantab](https://pantab.readthedocs.io/en/latest/index.html)
 

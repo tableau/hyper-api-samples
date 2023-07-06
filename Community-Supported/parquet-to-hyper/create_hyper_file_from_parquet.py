@@ -29,7 +29,7 @@ def run_create_hyper_file_from_parquet(
     table definition of the data to copy needs to be known and explicitly specified.
 
     Reading Parquet data is analogous to reading CSV data. For more details, see:
-    https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_insert_csv.html
+    https://tableau.github.io/hyper-db/docs/guides/hyper_file/insert_csv
     """
 
     # Start the Hyper process.

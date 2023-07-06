@@ -9,7 +9,7 @@ __Current Version__: 1.0
 
 This sample demonstrates how you can upgrade or downgrade an existing `.hyper` file to a newer or older Hyper file format by copying all of the tables and data into a new file.
 
-Fore more information on the Hyper file formats, see [Hyper Process Settings](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/databasesettings.html#DEFAULT_DATABASE_VERSION).
+Fore more information on the Hyper file formats, see [Hyper Process Settings](https://tableau.github.io/hyper-db/docs/hyper-api/hyper_process#process-settings).
 
 # Get started
 
@@ -49,8 +49,8 @@ The following instructions assume that you have set up a virtual environment for
 ## __Resources__
 Check out these resources to learn more:
 
-- [Hyper API docs](https://help.tableau.com/current/api/hyper_api/en-us/index.html)
+- [Hyper API docs](https://tableau.github.io/hyper-db)
 
-- [Tableau Hyper API Reference (Python)](https://help.tableau.com/current/api/hyper_api/en-us/reference/py/index.html)
+- [Tableau Hyper API Reference (Python)](https://tableau.github.io/hyper-db/lang_docs/py/index.html)
 
-- [Hyper API SQL Reference](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/index.html)
+- [Hyper API SQL Reference](https://tableau.github.io/hyper-db/docs/sql/)

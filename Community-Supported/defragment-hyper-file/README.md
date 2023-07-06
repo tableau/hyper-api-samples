@@ -11,7 +11,7 @@ This sample demonstrates how you can optimize the file storage of an existing `.
 
 This sample should serve as a starting point for anyone looking for a programmatic way to reduce the fragmentation of their `.hyper` file.
 
-For a description of how fragmentation can occur in the `.hyper` file and for ways of minimizing it's occurrence, see [Optimize Hyper File Storage](https://help.tableau.com/current/api/hyper_api/en-us/docs/hyper_api_defrag.html).
+For a description of how fragmentation can occur in the `.hyper` file and for ways of minimizing it's occurrence, see [Optimize Hyper File Storage](https://tableau.github.io/hyper-db/docs/guides/hyper_file/optimize).
 
 # Get started
 
@@ -62,8 +62,8 @@ To learn more about what is possible with the Hyper API, see the [official Hyper
 ## __Resources__
 Check out these resources to learn more:
 
-- [Hyper API docs](https://help.tableau.com/current/api/hyper_api/en-us/index.html)
+- [Hyper API docs](https://tableau.github.io/hyper-db)
 
-- [Tableau Hyper API Reference (Python)](https://help.tableau.com/current/api/hyper_api/en-us/reference/py/index.html)
+- [Tableau Hyper API Reference (Python)](https://tableau.github.io/hyper-db/lang_docs/py/index.html)
 
-- [Hyper API SQL Reference](https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/index.html)
+- [Hyper API SQL Reference](https://tableau.github.io/hyper-db/docs/sql/)

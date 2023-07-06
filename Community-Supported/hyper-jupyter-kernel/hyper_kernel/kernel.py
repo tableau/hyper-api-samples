@@ -203,7 +203,7 @@ class HyperKernel(Kernel):
         cmd = args.pop(0)
 
         if cmd == "?" or cmd == "help":
-            help_text = 'SQL command reference: https://help.tableau.com/current/api/hyper_api/en-us/reference/sql/sql-commands.html\n'
+            help_text = 'SQL command reference: https://tableau.github.io/hyper-db/docs/sql/command/\n'
             help_text += 'Additional client-side commands:\n'
             help_text += tabulate((["\\" + c[0], c[1].__doc__] for c in commands.items()), tablefmt='plain')
             help_text += '\n'
