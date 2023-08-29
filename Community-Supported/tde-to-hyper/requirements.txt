@@ -1,1 +1,1 @@
-tableauhyperapi==0.0.14109
+tableauhyperapi==0.0.17537
