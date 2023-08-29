@@ -1,6 +1,5 @@
 import argparse
 import os
-import traceback
 from pathlib import Path
 from tableauhyperapi import HyperProcess, Telemetry, Connection, CreateMode, escape_string_literal, TableName, HyperException
 
