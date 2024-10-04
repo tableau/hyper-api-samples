@@ -28,7 +28,7 @@ pip install -r requirements.txt
 To run the script and generate the `.hyper` file, execute:
 
 ```bash
-python hyper_from_dataframe.py
+python create_hyper_from_pandas_dataframe.py
 ```
 
 ### What the Script Does
