@@ -6,6 +6,7 @@
 
 This Python script demonstrates how to create a `.hyper` file (Tableau's Hyper database format) from a pandas DataFrame. It uses Tableau's Hyper API to define a table structure, insert the data from the DataFrame, and save it as a `.hyper` file.
 
+This is example shows an alternative to [using pantab](https://tableau.github.io/hyper-db/docs/guides/pandas_integration#loading-data-through-pandas), in case pantab cannot be used.
 ## Get Started
 
 ### Prerequisites
