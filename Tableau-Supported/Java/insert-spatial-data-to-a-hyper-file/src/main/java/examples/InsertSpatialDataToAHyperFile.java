@@ -13,7 +13,7 @@ import static com.tableau.hyperapi.Sql.escapeName;
 import static com.tableau.hyperapi.Sql.escapeStringLiteral;
 
 /**
- * An example demonstrating spatial data insertion to a hyper file
+ * An example demonstrating geospatial data insertion to a hyper file
  */
 public class InsertSpatialDataToAHyperFile{
     /**
@@ -23,7 +23,7 @@ public class InsertSpatialDataToAHyperFile{
     private static TableDefinition EXTRACT_TABLE = new TableDefinition(
             new TableName("Extract","Extract"))
             .addColumn("Name", SqlType.text(), NOT_NULLABLE)
-            .addColumn("Location", SqlType.geography(), NOT_NULLABLE);
+            .addColumn("Location", SqlType.tabgeography(), NOT_NULLABLE);
 
     /**
      * The main function
@@ -31,7 +31,7 @@ public class InsertSpatialDataToAHyperFile{
      * @param args The args
      */
     public static void main(String[] args) {
-        System.out.println("EXAMPLE - Insert spatial data into a Hyper file");
+        System.out.println("EXAMPLE - Insert geospatial data into a Hyper file");
 
         Path spatialDataPath = Paths.get(getWorkingDirectory(), "spatial_data.hyper");
 
@@ -70,10 +70,10 @@ public class InsertSpatialDataToAHyperFile{
                 inserterDefintion.add(new TableDefinition.Column("Location_as_text", SqlType.text(), NOT_NULLABLE));
 
                 // Column 'Name' is inserted into "Extract"."Extract" as-is.
-                // Column 'Location' in "Extract"."Extract" of geography type is computed from Column 'Location_as_text' of text type
-                // using the expression 'CAST("Location_as_text") AS GEOGRAPHY'.
+                // Column 'Location' in "Extract"."Extract" of `tableau.tabgeography` type is computed from Column 'Location_as_text' of `text` type
+                // using the expression 'CAST("Location_as_text") AS TABLEAU.TABGEOGRAPHY'.
                 // Inserter.ColumnMapping is used for mapping the CAST expression to Column 'Location'.
-                String textToGeographyCastExpression = "CAST(" + escapeName("Location_as_text") + " AS GEOGRAPHY)";
+                String textToGeographyCastExpression = "CAST(" + escapeName("Location_as_text") + " AS TABLEAU.TABGEOGRAPHY)";
                 List<Inserter.ColumnMapping> columnMappings = new ArrayList<Inserter.ColumnMapping>();
                 columnMappings.add(new Inserter.ColumnMapping("Name"));
                 columnMappings.add(new Inserter.ColumnMapping("Location", textToGeographyCastExpression));
