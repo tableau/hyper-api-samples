@@ -105,13 +105,13 @@ add_test(
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 # -----------------------------------------------------------------------------
-# `insert_spatial_data_to_a_hyper_file.cpp`
+# `insert_geospatial_data_to_a_hyper_file.cpp`
 
-add_executable(insert_spatial_data_to_a_hyper_file insert_spatial_data_to_a_hyper_file.cpp)
-target_link_libraries(insert_spatial_data_to_a_hyper_file PRIVATE Tableau::tableauhyperapi-cxx)
+add_executable(insert_geospatial_data_to_a_hyper_file insert_geospatial_data_to_a_hyper_file.cpp)
+target_link_libraries(insert_geospatial_data_to_a_hyper_file PRIVATE Tableau::tableauhyperapi-cxx)
 add_test(
-        NAME insert_spatial_data_to_a_hyper_file
-        COMMAND ${CMAKE_COMMAND} -E env HYPER_PATH=${HYPER_PATH} $<TARGET_FILE:insert_spatial_data_to_a_hyper_file>
+        NAME insert_geospatial_data_to_a_hyper_file
+        COMMAND ${CMAKE_COMMAND} -E env HYPER_PATH=${HYPER_PATH} $<TARGET_FILE:insert_geospatial_data_to_a_hyper_file>
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 # -----------------------------------------------------------------------------

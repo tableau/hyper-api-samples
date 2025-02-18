@@ -1,7 +1,7 @@
 /**
- * \example insert_spatial_data_to_a_hyper_file.cpp
+ * \example insert_geospatial_data_to_a_hyper_file.cpp
  *
- * An example of how to insert spatial data into a single-table Hyper file.
+ * An example of how to insert geospatial data into a single-table Hyper file.
  */
 
 #include <hyperapi/hyperapi.hpp>
@@ -14,10 +14,10 @@
 static const hyperapi::TableDefinition extractTable{
    {"Extract", "Extract"},
    {hyperapi::TableDefinition::Column{"Name", hyperapi::SqlType::text(), hyperapi::Nullability::NotNullable},
-    hyperapi::TableDefinition::Column{"Location", hyperapi::SqlType::geography(), hyperapi::Nullability::NotNullable}}};
+    hyperapi::TableDefinition::Column{"Location", hyperapi::SqlType::tabgeography(), hyperapi::Nullability::NotNullable}}};
 
 static void runInsertSpatialDataToAHyperFile() {
-   std::cout << "EXAMPLE - Insert spatial data into a single table within a new Hyper file" << std::endl;
+   std::cout << "EXAMPLE - Insert geospatial data into a single table within a new Hyper file" << std::endl;
    const std::string pathToDatabase = "data/spatial_data.hyper";
 
    // Starts the Hyper Process with telemetry enabled to send data to Tableau.
@@ -56,15 +56,15 @@ static void runInsertSpatialDataToAHyperFile() {
             hyperapi::TableDefinition::Column{"Location_as_text", hyperapi::SqlType::text(), hyperapi::Nullability::NotNullable}};
 
          // Column 'Name' is inserted into "Extract"."Extract" as-is.
-         // Column 'Location' in "Extract"."Extract" of geography type is computed from Column 'Location_as_text' of text type
-         // using the expression 'CAST("Location_as_text") AS GEOGRAPHY'.
+         // Column 'Location' in "Extract"."Extract" of `tableau.tabgeography` type is computed from Column 'Location_as_text' of `text` type
+         // using the expression 'CAST("Location_as_text") AS TABLEAU.TABGEOGRAPHY'.
          // hyperapi::Inserter::ColumnMapping is used for mapping the CAST expression to Column 'Location'.
-         std::string textToGeographyCastExpression = "CAST(" + hyperapi::escapeName("Location_as_text") + " AS GEOGRAPHY)";
+         std::string textToGeographyCastExpression = "CAST(" + hyperapi::escapeName("Location_as_text") + " AS TABLEAU.TABGEOGRAPHY)";
          std::vector<hyperapi::Inserter::ColumnMapping> columnMappings{
             hyperapi::Inserter::ColumnMapping{"Name"},
             hyperapi::Inserter::ColumnMapping{"Location", textToGeographyCastExpression}};
 
-         // Insert spatial data into the "Extract"."Extract" table using CAST expression.
+         // Insert geospatial data into the "Extract"."Extract" table using CAST expression.
          {
             hyperapi::Inserter inserter(connection, extractTable, columnMappings, inserterDefinition);
             inserter.addRow("Seattle", "point(-122.338083 47.647528)");
