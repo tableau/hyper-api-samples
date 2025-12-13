@@ -18,7 +18,7 @@
 #    cmake --build .
 #    ctest
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 
 # If CMAKE_PREFIX_PATH is not specified, provide a convenient default, so that the `find_package()` below can find
 # the Hyper API. This default assumes this `CMakeLists.txt` to be in its original location under `examples/`.
