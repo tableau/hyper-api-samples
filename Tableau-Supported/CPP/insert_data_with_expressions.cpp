@@ -7,7 +7,6 @@
 #include <hyperapi/hyperapi.hpp>
 #include <iostream>
 #include <string>
-#include <unordered_set>
 
 // The table is called "Extract" and will be created in the "Extract" schema.
 // This has historically been the default table name and schema for extracts created by Tableau.
