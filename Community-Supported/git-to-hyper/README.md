@@ -28,7 +28,7 @@ To run the script, you will need:
 $ git clone https://github.com/tableau/hyper-api-samples.git
 $ cd hyper-api-samples
 $ pip3 install -r Community-Supported/git-to-hyper/requirements.txt
-$ python Community-Supported/git-to-hyper/basic-git-to-hyper.py --path_to_repo ~/sample/repository
+$ python Community-Supported/git-to-hyper/basic-git-to-hyper.py ~/sample/repository
 ```
 
 The basic sample is a very lightweight example of how to extract meta data from git and save it into a Hyper database. It extracts only very high-level information like timestamps of commits, their authors and metrics like number of added lines.
@@ -55,7 +55,7 @@ The script will generate a `git.hyper` file which can be used in Tableau for fur
 $ git clone https://github.com/tableau/hyper-api-samples.git
 $ cd hyper-api-samples
 $ pip3 install -r Community-Supported/git-to-hyper/requirements.txt
-$ python Community-Supported/git-to-hyper/advanced-git-to-hyper.py --path_to_repo ~/sample/repository
+$ python Community-Supported/git-to-hyper/advanced-git-to-hyper.py ~/sample/repository
 ```
 
 The advanced sample gathers further data by e.g. running `git blame` for every changed file to count the source lines of code for every author. The results are stored in multiple tables inside the Hyper file and `FOREIGN_KEY` is used to link them together (see [here](https://github.com/tableau/hyper-api-samples/tree/main/Community-Supported/publish-multi-table-hyper) for a detailed explanation on how to use multiple tables in Hyper).
